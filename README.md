@@ -46,8 +46,10 @@ $$\mathbf{Resume\ Claims} \longrightarrow \mathbf{Project\ Evidence} \longrighta
 
 ### Artificial Intelligence & Machine Learning
 - **SDK:** Official Google Gen AI JavaScript/TypeScript SDK (`@google/genai`)
-- **Language Models:** Gemini 2.5 Flash / Gemini 1.5 Flash (configurable via environment variables) for resume AST parsing, structured bullet-point impact enhancement, timed coding challenge generation, personalized 4-week learning roadmaps, and contextual career assistance
-- **Semantic Vector Matching:** Convex Vector Search for similarity retrieval across job requirements and candidate skills
+- **Language Models:** Gemini 3.1 Flash Lite (`gemini-3.1-flash-lite`, primary) and Gemini 3.5 Flash (`gemini-3.5-flash`, fallback) running server-side in Convex Actions.
+- **Strict Resume Integrity Rule:** Enforces factual preservation on resume bullet points; never fabricates unverified percentages, latency numbers, or user volume, using explicit bracketed placeholders `[insert metric if tracked]` when metrics are absent.
+- **AI Capabilities:** Resume AST parsing, rubric-evaluated adaptive coding challenges, personalized 4-week learning roadmaps, tailored evidence-grounded cover letters, and contextual career assistance.
+- **Semantic Vector Matching:** Convex Vector Search for similarity retrieval across job requirements and candidate skills.
 
 ---
 
@@ -232,7 +234,7 @@ Open `http://localhost:5173` to view the application with live hot module replac
 ```bash
 npm run test
 ```
-Runs 25 automated tests across 6 test suites covering security RBAC enforcement, cross-tenant isolation, job intelligence parsing, skill taxonomy normalization, explainable matching algorithms, and document extraction.
+Runs 26 automated tests across 6 test suites covering security RBAC enforcement, cross-tenant isolation, job intelligence parsing, skill taxonomy normalization, explainable matching algorithms, resume factual integrity, and document extraction.
 
 ### Building for Production
 ```bash
