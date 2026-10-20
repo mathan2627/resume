@@ -197,24 +197,39 @@ export default defineSchema({
     description: v.string(),
     requiredSkills: v.array(v.string()),
     eligibilityCriteria: v.optional(v.string()),
+    educationRequirement: v.optional(v.string()),
+    experienceLevel: v.optional(v.string()),
     location: v.string(),
+    country: v.optional(v.string()),
+    city: v.optional(v.string()),
     remoteStatus: v.union(v.literal("remote"), v.literal("hybrid"), v.literal("onsite")),
+    employmentType: v.optional(v.string()), // "internship", "full-time", "part-time", "graduate"
     stipend: v.optional(v.string()),
+    salaryMin: v.optional(v.number()),
+    salaryMax: v.optional(v.number()),
+    currency: v.optional(v.string()),
     applicationOpenDate: v.optional(v.string()),
     applicationDeadline: v.optional(v.string()),
     originalUrl: v.string(),
     sourceName: v.string(),
+    sourceIdentifier: v.optional(v.string()),
+    externalId: v.optional(v.string()),
     listingStatus: v.union(v.literal("active"), v.literal("expired"), v.literal("stale"), v.literal("pending_review")),
+    freshnessStatus: v.optional(v.union(v.literal("fresh"), v.literal("recent"), v.literal("aging"), v.literal("stale"))),
     verificationStatus: v.union(v.literal("verified"), v.literal("unverified")),
+    sourceConfidence: v.optional(v.union(v.literal("high"), v.literal("medium"), v.literal("low"))),
+    duplicateClusterId: v.optional(v.string()),
     recruiterId: v.optional(v.id("users")),
     firstSeenAt: v.number(),
     lastCheckedAt: v.number(),
+    lastVerifiedAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_company", ["companyName"])
     .index("by_status", ["listingStatus"])
     .index("by_verification", ["verificationStatus"])
-    .index("by_recruiter", ["recruiterId"]),
+    .index("by_recruiter", ["recruiterId"])
+    .index("by_sourceIdentifier", ["sourceIdentifier"]),
 
   // Embeddings for Vector Search
   internshipEmbeddings: defineTable({
@@ -426,24 +441,44 @@ export default defineSchema({
   // Source Configurations (Admin)
   sourceConfigurations: defineTable({
     name: v.string(),
-    sourceType: v.union(v.literal("api"), v.literal("feed"), v.literal("csv"), v.literal("manual")),
+    sourceType: v.union(
+      v.literal("api"),
+      v.literal("feed"),
+      v.literal("csv"),
+      v.literal("manual"),
+      v.literal("greenhouse"),
+      v.literal("lever"),
+      v.literal("web_discovery")
+    ),
     endpointOrUrl: v.optional(v.string()),
+    boardToken: v.optional(v.string()),
     enabled: v.boolean(),
+    updateFrequencyMinutes: v.optional(v.number()),
     updateFrequencyHours: v.number(),
+    nextCheckAt: v.optional(v.number()),
     lastRunAt: v.optional(v.number()),
     lastStatus: v.optional(v.string()),
+    rateLimitPerMinute: v.optional(v.number()),
+    consecutiveFailures: v.optional(v.number()),
+    backoffUntil: v.optional(v.number()),
+    totalListingsFound: v.optional(v.number()),
+    activeListingsCount: v.optional(v.number()),
     createdAt: v.number(),
-  }).index("by_enabled", ["enabled"]),
+  })
+    .index("by_enabled", ["enabled"])
+    .index("by_type", ["sourceType"]),
 
   // Ingestion Runs (Admin)
   ingestionRuns: defineTable({
     sourceId: v.optional(v.id("sourceConfigurations")),
     sourceName: v.string(),
-    status: v.union(v.literal("success"), v.literal("partial"), v.literal("failed")),
+    status: v.union(v.literal("success"), v.literal("partial"), v.literal("failed"), v.literal("rate_limited")),
     listingsProcessed: v.number(),
     listingsAdded: v.number(),
     listingsUpdated: v.number(),
+    listingsExpired: v.optional(v.number()),
     errorMessage: v.optional(v.string()),
+    durationMs: v.optional(v.number()),
     executedAt: v.number(),
   }).index("by_executedAt", ["executedAt"]),
 

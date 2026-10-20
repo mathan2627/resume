@@ -138,13 +138,19 @@ export const seedInternships = mutation({
   },
 });
 
-// List internships with flexible filtering
+// List internships with flexible filtering and sorting
 export const listInternships = query({
   args: {
     search: v.optional(v.string()),
     skill: v.optional(v.string()),
+    country: v.optional(v.string()),
+    city: v.optional(v.string()),
     remoteStatus: v.optional(v.string()),
+    employmentType: v.optional(v.string()),
     verificationStatus: v.optional(v.string()),
+    freshness: v.optional(v.string()),
+    sourceName: v.optional(v.string()),
+    sortBy: v.optional(v.string()),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -169,6 +175,7 @@ export const listInternships = query({
           i.roleTitle.toLowerCase().includes(q) ||
           i.companyName.toLowerCase().includes(q) ||
           i.description.toLowerCase().includes(q) ||
+          i.location.toLowerCase().includes(q) ||
           i.requiredSkills.some((s) => s.toLowerCase().includes(q))
       );
     }
@@ -180,12 +187,56 @@ export const listInternships = query({
       );
     }
 
+    if (args.country && args.country !== "all") {
+      const c = args.country.toLowerCase();
+      list = list.filter(
+        (i) =>
+          (i.country && i.country.toLowerCase().includes(c)) ||
+          i.location.toLowerCase().includes(c)
+      );
+    }
+
+    if (args.city && args.city !== "all") {
+      const cityLower = args.city.toLowerCase();
+      list = list.filter(
+        (i) =>
+          (i.city && i.city.toLowerCase().includes(cityLower)) ||
+          i.location.toLowerCase().includes(cityLower)
+      );
+    }
+
     if (args.remoteStatus && args.remoteStatus !== "all") {
       list = list.filter((i) => i.remoteStatus === args.remoteStatus);
     }
 
+    if (args.employmentType && args.employmentType !== "all") {
+      list = list.filter((i) => (i.employmentType || "internship") === args.employmentType);
+    }
+
     if (args.verificationStatus && args.verificationStatus !== "all") {
       list = list.filter((i) => i.verificationStatus === args.verificationStatus);
+    }
+
+    if (args.freshness && args.freshness !== "all") {
+      list = list.filter((i) => (i.freshnessStatus || "recent") === args.freshness);
+    }
+
+    if (args.sourceName && args.sourceName !== "all") {
+      list = list.filter((i) => i.sourceName.toLowerCase().includes(args.sourceName!.toLowerCase()));
+    }
+
+    // Sorting
+    if (args.sortBy === "date") {
+      list.sort((a, b) => (b.lastCheckedAt || b.createdAt) - (a.lastCheckedAt || a.createdAt));
+    } else if (args.sortBy === "deadline") {
+      list.sort((a, b) => {
+        if (!a.applicationDeadline) return 1;
+        if (!b.applicationDeadline) return -1;
+        return new Date(a.applicationDeadline).getTime() - new Date(b.applicationDeadline).getTime();
+      });
+    } else {
+      // Default: Most recently verified/observed
+      list.sort((a, b) => (b.lastCheckedAt || 0) - (a.lastCheckedAt || 0));
     }
 
     if (args.limit) {

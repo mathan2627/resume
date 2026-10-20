@@ -16,6 +16,7 @@ import type * as challenges from "../challenges.js";
 import type * as coverLetters from "../coverLetters.js";
 import type * as crons from "../crons.js";
 import type * as internships from "../internships.js";
+import type * as jobIntelligence from "../jobIntelligence.js";
 import type * as lib_auth_helpers from "../lib/auth_helpers.js";
 import type * as lib_taxonomy from "../lib/taxonomy.js";
 import type * as matching from "../matching.js";
@@ -44,6 +45,7 @@ declare const fullApi: ApiFromModules<{
   coverLetters: typeof coverLetters;
   crons: typeof crons;
   internships: typeof internships;
+  jobIntelligence: typeof jobIntelligence;
   "lib/auth_helpers": typeof lib_auth_helpers;
   "lib/taxonomy": typeof lib_taxonomy;
   matching: typeof matching;

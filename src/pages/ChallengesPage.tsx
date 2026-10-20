@@ -12,10 +12,21 @@ import {
   ShieldCheck,
   RotateCcw,
   BookOpen,
+  Terminal,
+  Check,
+  X,
+  Target,
+  Layers,
 } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { useToast } from "@/components/ui/Toast";
 
 export const ChallengesPage: React.FC = () => {
   const { token } = useAuth();
+  const { success, error: toastError } = useToast();
 
   const challenges = useQuery(api.challenges.listChallenges, {});
   const userAttempts = useQuery(api.challenges.listUserAttempts, token ? { token } : "skip");
@@ -65,273 +76,304 @@ export const ChallengesPage: React.FC = () => {
         timeSpentSeconds: Math.max(timeSpent, 5),
       });
       setResult(res);
+      if (res.passed) {
+        success("Challenge Passed!", `Upgraded ${activeChallenge.skillName} to Challenge Assessed (${res.score}%).`);
+      } else {
+        toastError("Assessment Incomplete", `Score: ${res.score}%. Review the rubric feedback below.`);
+      }
     } catch (err: any) {
-      alert("Submission error: " + err.message);
+      toastError("Submission error", err.message);
     } finally {
       setSubmitting(false);
     }
   };
 
+  const formatTimer = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+  };
+
   return (
-    <div className="space-y-8">
-      {/* Page Header */}
-      <div className="pb-6 border-b border-slate-800">
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800/60 mb-2">
-          <Code2 className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Adaptive Technical Assessments</span>
+    <div className="space-y-8 max-w-7xl mx-auto">
+      {/* 1. HEADER */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-white/[0.08] light:border-slate-200">
+        <div>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-950/80 border border-purple-500/30 text-purple-300 light:bg-purple-50 light:text-purple-700 mb-2">
+            <Code2 className="w-3.5 h-3.5 text-purple-400" />
+            <span>Timed Adaptive Assessments</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white light:text-slate-900 tracking-tight">
+            Adaptive Skill Challenge Engine
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-400 light:text-slate-600 mt-1 max-w-2xl leading-relaxed">
+            Demonstrate real-world problem solving, code reading, and bug hunting. Passing an assessment upgrades your skill to "Challenge Assessed" status with an explainable proof score.
+          </p>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-          Adaptive Skill Challenge Engine
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-2xl leading-relaxed">
-          Complete practical bug-hunting, code-reading, and architectural evaluations. Passing an assessment upgrades your skill directly to "Challenge Assessed" (85-100% score).
-        </p>
+
+        <Badge variant="verified">
+          {userAttempts?.filter((a) => a.passed).length || 0} Challenges Passed
+        </Badge>
       </div>
 
-      {/* ACTIVE CHALLENGE RUNNER MODAL / CONTAINER */}
+      {/* 2. ACTIVE CHALLENGE RUNNER */}
       {activeChallenge && (
-        <div className="bg-slate-900 border-2 border-indigo-500/50 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6">
-          {/* Header & Countdown Timer */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+        <Card highlight className="p-6 sm:p-8 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800 light:border-slate-200">
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-950 text-indigo-300 border border-indigo-800 uppercase">
-                  {activeChallenge.skillName}
-                </span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-300 capitalize">
-                  {activeChallenge.difficulty}
-                </span>
+              <div className="flex items-center gap-2 mb-1.5">
+                <Badge variant="challenge">{activeChallenge.skillName}</Badge>
+                <Badge variant="outline">{activeChallenge.difficulty}</Badge>
               </div>
-              <h2 className="text-lg font-bold text-white">{activeChallenge.title}</h2>
+              <h2 className="text-xl font-bold text-white light:text-slate-900">
+                {activeChallenge.title}
+              </h2>
             </div>
 
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 font-mono text-sm self-start sm:self-auto">
-              <Clock className="w-4 h-4 text-cyan-400" />
-              <span className={timeLeft < 60 ? "text-red-400 font-bold" : "text-slate-300"}>
-                {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, "0")}
-              </span>
+            <div className="flex items-center gap-3">
+              <div className="px-3.5 py-1.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs font-mono font-bold text-cyan-400 flex items-center gap-1.5">
+                <Clock className="w-4 h-4 text-cyan-400" />
+                <span>{formatTimer(timeLeft)}</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setActiveChallenge(null)}
+              >
+                Exit
+              </Button>
             </div>
           </div>
 
-          {!result ? (
-            <div className="space-y-6">
-              {/* Instructions & Question */}
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                  Instructions & Question:
-                </p>
-                <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 font-mono whitespace-pre-wrap leading-relaxed">
-                  {activeChallenge.question}
+          {/* Question / Instructions */}
+          <div className="space-y-3">
+            <p className="text-xs text-slate-400 light:text-slate-500">
+              {activeChallenge.instructions}
+            </p>
+            <div className="p-4 rounded-xl bg-slate-950/60 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-sm text-slate-200 light:text-slate-800 leading-relaxed font-mono whitespace-pre-wrap">
+              {activeChallenge.question}
+            </div>
+          </div>
+
+          {/* Options (MCQ / Practical) */}
+          {activeChallenge.options && !result && (
+            <div className="space-y-2.5">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                Select Your Solution
+              </span>
+              {activeChallenge.options.map((opt: string, idx: number) => {
+                const isSelected = selectedOption === idx;
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => setSelectedOption(idx)}
+                    className={`w-full p-4 rounded-xl border text-left text-xs sm:text-sm transition-all duration-200 flex items-start gap-3 cursor-pointer ${
+                      isSelected
+                        ? "bg-blue-600/20 border-blue-500 text-white font-medium shadow-sm"
+                        : "bg-slate-950/40 light:bg-slate-50 border-slate-800 light:border-slate-200 text-slate-300 light:text-slate-700 hover:border-slate-700"
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 text-xs font-bold ${
+                        isSelected
+                          ? "border-cyan-400 bg-cyan-400 text-slate-950"
+                          : "border-slate-700 text-slate-500"
+                      }`}
+                    >
+                      {String.fromCharCode(65 + idx)}
+                    </div>
+                    <span>{opt}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Free-form code or answer input if no options */}
+          {!activeChallenge.options && !result && (
+            <div className="space-y-2">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+                Your Technical Explanation & Code
+              </span>
+              <textarea
+                rows={6}
+                value={textAnswer}
+                onChange={(e) => setTextAnswer(e.target.value)}
+                placeholder="Explain the architectural trade-offs, edge-case mitigation, and implementation logic..."
+                className="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-4 text-xs font-mono text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              />
+            </div>
+          )}
+
+          {/* Result Breakdown Card */}
+          {result && (
+            <div
+              className={`p-6 rounded-2xl border space-y-4 ${
+                result.passed
+                  ? "bg-emerald-950/20 border-emerald-500/40 text-emerald-200"
+                  : "bg-rose-950/20 border-rose-500/40 text-rose-200"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {result.passed ? (
+                    <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                  ) : (
+                    <AlertCircle className="w-5 h-5 text-rose-400" />
+                  )}
+                  <h3 className="text-base font-bold text-white light:text-slate-900">
+                    {result.passed ? "Assessment Passed" : "Needs Revision"}
+                  </h3>
                 </div>
+                <Badge variant={result.passed ? "verified" : "warning"}>
+                  Score: {result.score}/100
+                </Badge>
               </div>
 
-              {/* Options (MCQ) or Textarea */}
-              {activeChallenge.options ? (
-                <div className="space-y-2.5">
-                  <p className="text-xs font-semibold text-slate-300">Select the correct solution:</p>
-                  <div className="space-y-2">
-                    {activeChallenge.options.map((opt: string, idx: number) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setSelectedOption(idx)}
-                        className={`w-full text-left p-3.5 rounded-xl border text-xs transition-all flex items-start gap-3 ${
-                          selectedOption === idx
-                            ? "bg-indigo-950/60 border-indigo-500 text-white shadow-md shadow-indigo-950"
-                            : "bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700"
-                        }`}
-                      >
-                        <span
-                          className={`w-5 h-5 rounded-full border flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5 ${
-                            selectedOption === idx
-                              ? "border-cyan-400 text-cyan-400"
-                              : "border-slate-600 text-slate-500"
-                          }`}
-                        >
-                          {String.fromCharCode(65 + idx)}
-                        </span>
-                        <span className="leading-relaxed">{opt}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-slate-300">Your Technical Solution & Analysis:</label>
-                  <textarea
-                    rows={6}
-                    value={textAnswer}
-                    onChange={(e) => setTextAnswer(e.target.value)}
-                    placeholder="Provide your solution, root cause diagnosis, or SQL query here..."
-                    className="w-full p-3 text-xs bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-400 font-mono"
-                  />
+              <p className="text-xs text-slate-300 light:text-slate-600 leading-relaxed">
+                {result.feedback}
+              </p>
+
+              {result.passed && (
+                <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs text-cyan-300">
+                  ✓ Successfully updated {activeChallenge.skillName} in your Skill Proof Engine and Proof Passport.
                 </div>
               )}
 
-              {/* Rubric Citation */}
-              <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/60 text-[11px] text-slate-400 flex items-start gap-2">
-                <BookOpen className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
-                <span>
-                  <strong className="text-slate-300">Evaluation Rubric:</strong> {activeChallenge.rubric}
-                </span>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center justify-between pt-4 border-t border-slate-800">
-                <button
-                  type="button"
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <Button
+                  variant="primary"
+                  size="sm"
                   onClick={() => setActiveChallenge(null)}
-                  className="px-4 py-2 text-xs text-slate-400 hover:text-white"
                 >
-                  Exit Challenge
-                </button>
-                <button
-                  type="button"
-                  disabled={submitting || (activeChallenge.options ? selectedOption === null : !textAnswer.trim())}
-                  onClick={handleSubmit}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 shadow-md shadow-blue-600/20"
-                >
-                  {submitting ? "Evaluating..." : "Submit Answer"}
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          ) : (
-            /* Result Banner */
-            <div className="space-y-6 animate-in fade-in">
-              <div
-                className={`p-6 rounded-xl border flex flex-col items-center text-center space-y-3 ${
-                  result.passed
-                    ? "bg-emerald-950/40 border-emerald-800/80 text-emerald-200"
-                    : "bg-red-950/40 border-red-800/80 text-red-200"
-                }`}
-              >
-                {result.passed ? (
-                  <CheckCircle2 className="w-12 h-12 text-emerald-400" />
-                ) : (
-                  <AlertCircle className="w-12 h-12 text-red-400" />
-                )}
-                <div>
-                  <h3 className="text-xl font-extrabold text-white">
-                    {result.passed ? "Assessment Passed!" : "Assessment Incomplete"}
-                  </h3>
-                  <p className="text-2xl font-black mt-1">
-                    Score: {result.score} <span className="text-xs font-normal text-slate-400">/ 100</span>
-                  </p>
-                </div>
-                <p className="text-xs max-w-lg leading-relaxed text-slate-300">{result.feedback}</p>
-                {result.passed && (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-700/60">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Skill status upgraded to "Challenge Assessed"</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center justify-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setActiveChallenge(null)}
-                  className="px-6 py-2.5 rounded-xl text-xs font-semibold text-white bg-slate-800 hover:bg-slate-700 transition-colors"
-                >
-                  Back to Challenges List
-                </button>
+                  Done
+                </Button>
               </div>
             </div>
           )}
-        </div>
+
+          {/* Submit Action */}
+          {!result && (
+            <div className="pt-4 border-t border-slate-800 light:border-slate-200 flex items-center justify-between">
+              <span className="text-xs text-slate-400">
+                Evaluation: {activeChallenge.rubric}
+              </span>
+              <Button
+                variant="glow"
+                size="md"
+                isLoading={submitting}
+                disabled={selectedOption === null && !textAnswer.trim()}
+                onClick={handleSubmit}
+              >
+                <span>Submit Assessment</span>
+                <ArrowRight className="w-4 h-4 ml-1.5" />
+              </Button>
+            </div>
+          )}
+        </Card>
       )}
 
-      {/* Available Challenges Master Catalog */}
+      {/* 3. AVAILABLE CHALLENGES CATALOG */}
       <div className="space-y-4">
-        <h2 className="text-base font-bold text-white flex items-center gap-2">
-          <BookOpen className="w-4 h-4 text-cyan-400" />
-          <span>Available Challenges</span>
+        <h2 className="text-base sm:text-lg font-bold text-white light:text-slate-900">
+          Available Practical Skill Challenges
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {challenges && challenges.length > 0 ? (
-            challenges.map((ch: any) => (
-              <div
-                key={ch._id}
-                className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-between space-y-4 hover:border-slate-700 transition-all"
-              >
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-950 text-indigo-300 border border-indigo-800 uppercase">
-                      {ch.skillName}
-                    </span>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-400 capitalize">
-                      {ch.difficulty}
-                    </span>
-                  </div>
-                  <h3 className="text-sm font-bold text-white leading-snug">{ch.title}</h3>
-                  <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
-                    {ch.instructions}
-                  </p>
-                </div>
+        {(!challenges || challenges.length === 0) ? (
+          <EmptyState
+            icon={<Code2 className="w-6 h-6 text-purple-400" />}
+            title="Initializing Challenge Engine"
+            description="Adaptive challenges will appear here to test your architectural and debugging competence."
+          />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {challenges.map((c) => {
+              const attempt = userAttempts?.find((a) => a.challengeId === c._id);
 
-                <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
-                  <span className="text-[11px] text-slate-500 flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {ch.allowedTimeMinutes} mins
-                  </span>
-                  <button
-                    onClick={() => handleStartChallenge(ch)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-cyan-300 bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-800/60 transition-all"
-                  >
-                    <span>Start Test</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="col-span-full text-center py-8 text-xs text-slate-500">
-              Loading challenges catalog...
-            </div>
-          )}
-        </div>
+              return (
+                <Card key={c._id} hover className="p-5 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <Badge variant="challenge">{c.skillName}</Badge>
+                      <Badge variant="outline">{c.difficulty}</Badge>
+                    </div>
+
+                    <h3 className="text-base font-semibold text-white light:text-slate-900 mb-2">
+                      {c.title}
+                    </h3>
+                    <p className="text-xs text-slate-400 light:text-slate-500 line-clamp-2 mb-4">
+                      {c.instructions}
+                    </p>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-800/60 light:border-slate-100 flex items-center justify-between">
+                    <span className="text-xs text-slate-500 flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5" /> {c.allowedTimeMinutes} mins
+                    </span>
+
+                    {attempt?.passed ? (
+                      <Badge variant="verified">Passed ({attempt.score}%)</Badge>
+                    ) : (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleStartChallenge(c)}
+                      >
+                        Start Challenge
+                      </Button>
+                    )}
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      {/* User's Past Attempt History */}
+      {/* 4. PAST ATTEMPTS HISTORY */}
       {userAttempts && userAttempts.length > 0 && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
-          <h2 className="text-sm font-bold text-white flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            <span>Your Assessment History</span>
+        <div className="space-y-4 pt-6 border-t border-white/[0.08] light:border-slate-200">
+          <h2 className="text-base sm:text-lg font-bold text-white light:text-slate-900">
+            Assessment Attempt History
           </h2>
 
-          <div className="space-y-2">
-            {userAttempts.map((attempt) => (
-              <div
-                key={attempt._id}
-                className="p-3 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-between gap-4 text-xs"
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-white">{attempt.skillName}</span>
-                    <span
-                      className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
-                        attempt.passed
-                          ? "bg-emerald-950 text-emerald-400 border border-emerald-800"
-                          : "bg-red-950 text-red-400 border border-red-800"
-                      }`}
-                    >
-                      {attempt.passed ? "PASSED" : "REVISE"}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">{attempt.feedback}</p>
-                </div>
-
-                <div className="text-right shrink-0">
-                  <span className="text-sm font-bold text-white">{attempt.score}%</span>
-                  <p className="text-[10px] text-slate-500">
-                    {new Date(attempt.completedAt).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-            ))}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-slate-300 light:text-slate-700">
+              <thead className="bg-slate-900/80 light:bg-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                <tr>
+                  <th className="py-3 px-4 rounded-l-xl">Skill</th>
+                  <th className="py-3 px-4">Result</th>
+                  <th className="py-3 px-4">Rubric Score</th>
+                  <th className="py-3 px-4">Time Spent</th>
+                  <th className="py-3 px-4 rounded-r-xl">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60 light:divide-slate-200">
+                {userAttempts.map((att) => (
+                  <tr key={att._id} className="hover:bg-slate-900/40 light:hover:bg-slate-50">
+                    <td className="py-3.5 px-4 font-semibold text-white light:text-slate-900">
+                      {att.skillName}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      {att.passed ? (
+                        <Badge variant="verified" size="sm">Passed</Badge>
+                      ) : (
+                        <Badge variant="warning" size="sm">Failed</Badge>
+                      )}
+                    </td>
+                    <td className="py-3.5 px-4 font-bold text-cyan-400">
+                      {att.score}%
+                    </td>
+                    <td className="py-3.5 px-4 text-slate-400">
+                      {att.timeSpentSeconds}s
+                    </td>
+                    <td className="py-3.5 px-4 text-slate-400">
+                      {new Date(att.completedAt).toLocaleDateString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

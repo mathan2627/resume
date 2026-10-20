@@ -16,7 +16,11 @@ import {
   Settings,
   Users,
   Building2,
+  Activity,
+  LogOut,
   ChevronRight,
+  Database,
+  Search,
 } from "lucide-react";
 
 interface NavItem {
@@ -26,8 +30,8 @@ interface NavItem {
   badge?: string;
 }
 
-export const Sidebar: React.FC = () => {
-  const { user } = useAuth();
+export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobile }) => {
+  const { user, logout } = useAuth();
   const { t } = useLanguage();
   const location = useLocation();
 
@@ -37,51 +41,61 @@ export const Sidebar: React.FC = () => {
 
   const studentLinks: NavItem[] = [
     { to: "/dashboard", label: t("nav.dashboard"), icon: LayoutDashboard },
-    { to: "/skills", label: t("nav.skills"), icon: ShieldCheck, badge: "Core" },
+    { to: "/skills", label: t("nav.skills"), icon: ShieldCheck, badge: "Proof" },
     { to: "/challenges", label: t("nav.challenges"), icon: Code2 },
-    { to: "/internships", label: t("nav.internships"), icon: Briefcase },
+    { to: "/internships", label: t("nav.internships"), icon: Briefcase, badge: "Live" },
     { to: "/roadmap", label: t("nav.roadmap"), icon: Map },
     { to: "/applications", label: t("nav.applications"), icon: CheckSquare },
     { to: "/resume", label: t("nav.resume"), icon: FileText },
     { to: "/interview", label: t("nav.interview"), icon: Video },
     { to: "/passport", label: t("nav.passport"), icon: Share2 },
     { to: "/assistant", label: t("nav.assistant"), icon: Bot },
+    { to: "/settings", label: t("nav.settings"), icon: Settings },
   ];
 
-  const recruiterLinks = [
-    { to: "/recruiter", label: "My Listings & Applicants", icon: Building2 },
-    { to: "/recruiter/search", label: "Consented Candidate Search", icon: Users },
-    { to: "/internships", label: "Browse All Opportunities", icon: Briefcase },
+  const recruiterLinks: NavItem[] = [
+    { to: "/recruiter", label: "Talent Postings & Candidates", icon: Building2 },
+    { to: "/recruiter/search", label: "Verified Student Search", icon: Search },
+    { to: "/internships", label: "Opportunity Catalog", icon: Briefcase },
+    { to: "/settings", label: t("nav.settings"), icon: Settings },
   ];
 
-  const adminLinks = [
-    { to: "/admin", label: "System Analytics & Overview", icon: LayoutDashboard },
-    { to: "/admin/listings", label: "Listing Quality & Verification", icon: CheckSquare },
-    { to: "/admin/users", label: "User & Role Management", icon: Users },
-    { to: "/admin/import", label: "CSV Ingestion & Sources", icon: FileText },
+  const adminLinks: NavItem[] = [
+    { to: "/admin", label: "Global Ingestion Console", icon: Activity, badge: "1-Min" },
+    { to: "/admin/listings", label: "Opportunity Quality & Review", icon: CheckSquare },
+    { to: "/admin/users", label: "Role & Permission Control", icon: Users },
+    { to: "/admin/import", label: "CSV & Source Connectors", icon: Database },
+    { to: "/settings", label: t("nav.settings"), icon: Settings },
   ];
 
   const activeLinks = isAdmin ? adminLinks : isRecruiter ? recruiterLinks : studentLinks;
 
   return (
-    <aside className="w-64 bg-[#080d1a] border-r border-slate-800/80 flex flex-col shrink-0 min-h-[calc(100vh-4rem)]">
-      {/* Role Banner */}
-      <div className="p-4 border-b border-slate-800/80">
-        <div className="bg-slate-900/90 rounded-lg p-3 border border-slate-800 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-md bg-gradient-to-tr from-indigo-500 to-blue-500 flex items-center justify-center font-bold text-white shadow-sm">
+    <aside className="w-64 bg-[#080d19] light:bg-slate-50 border-r border-white/[0.08] light:border-slate-200 flex flex-col shrink-0 min-h-[calc(100vh-4rem)] transition-colors">
+      {/* User Role Pill */}
+      <div className="p-4 border-b border-white/[0.08] light:border-slate-200">
+        <div className="bg-slate-900/90 light:bg-white rounded-xl p-3 border border-slate-800/80 light:border-slate-200 shadow-sm flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center font-bold text-white text-xs shadow-sm">
             {user?.name?.charAt(0).toUpperCase() || "U"}
           </div>
-          <div className="overflow-hidden">
-            <p className="text-xs font-semibold text-white truncate">{user?.name || "Student"}</p>
-            <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-indigo-950 text-indigo-300 border border-indigo-800/50">
-              {user?.role || "Student"}
-            </span>
+          <div className="overflow-hidden flex-1 min-w-0">
+            <p className="text-xs font-semibold text-white light:text-slate-900 truncate">
+              {user?.name || "Student"}
+            </p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="inline-block px-1.5 py-0.2 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-950/60 text-cyan-300 border border-blue-800/40 light:bg-blue-50 light:text-blue-700">
+                {user?.role || "Student"}
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Navigation List */}
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+        <p className="px-3 pt-2 pb-1.5 text-[10px] font-bold tracking-wider uppercase text-slate-500 light:text-slate-400">
+          Navigation
+        </p>
         {activeLinks.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.to;
@@ -89,22 +103,29 @@ export const Sidebar: React.FC = () => {
             <Link
               key={item.to}
               to={item.to}
-              className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition-all group ${
+              onClick={onCloseMobile}
+              className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all group ${
                 isActive
-                  ? "bg-indigo-600/15 text-indigo-300 border border-indigo-500/30 font-semibold"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                  ? "bg-blue-600 text-white shadow-sm font-semibold"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/60 light:text-slate-600 light:hover:text-slate-900 light:hover:bg-slate-100"
               }`}
             >
               <div className="flex items-center gap-2.5">
                 <Icon
                   className={`w-4 h-4 transition-colors ${
-                    isActive ? "text-cyan-400" : "text-slate-400 group-hover:text-slate-200"
+                    isActive ? "text-white" : "text-slate-400 group-hover:text-cyan-400 light:text-slate-500"
                   }`}
                 />
                 <span>{item.label}</span>
               </div>
               {item.badge && (
-                <span className="text-[10px] px-1.5 py-0.2 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-800/40">
+                <span
+                  className={`text-[9px] px-1.5 py-0.2 rounded font-bold uppercase tracking-wider ${
+                    isActive
+                      ? "bg-white/20 text-white"
+                      : "bg-cyan-950/60 text-cyan-400 border border-cyan-800/40 light:bg-cyan-50 light:text-cyan-700"
+                  }`}
+                >
                   {item.badge}
                 </span>
               )}
@@ -113,26 +134,16 @@ export const Sidebar: React.FC = () => {
         })}
       </nav>
 
-      {/* Proof Passport Quick Promo */}
-      {isStudent && (
-        <div className="p-3 border-t border-slate-800/80">
-          <div className="bg-gradient-to-br from-indigo-950/40 to-slate-900/60 border border-indigo-900/30 rounded-lg p-3 text-xs">
-            <div className="flex items-center gap-1.5 text-cyan-400 font-semibold mb-1">
-              <Share2 className="w-3.5 h-3.5" />
-              <span>Proof Passport</span>
-            </div>
-            <p className="text-[11px] text-slate-400 mb-2 leading-relaxed">
-              Share your verified evidence with prospective employers.
-            </p>
-            <Link
-              to="/passport"
-              className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-400 hover:text-indigo-300"
-            >
-              Configure sharing <ChevronRight className="w-3 h-3" />
-            </Link>
-          </div>
-        </div>
-      )}
+      {/* Bottom Footer Actions */}
+      <div className="p-3 border-t border-white/[0.08] light:border-slate-200 space-y-1">
+        <button
+          onClick={() => logout()}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-rose-400 hover:bg-rose-950/20 light:hover:bg-rose-50 transition-colors"
+        >
+          <LogOut className="w-4 h-4 text-slate-500 hover:text-rose-400" />
+          <span>Sign Out</span>
+        </button>
+      </div>
     </aside>
   );
 };

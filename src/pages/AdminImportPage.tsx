@@ -3,10 +3,15 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { FileSpreadsheet, Upload, CheckCircle2, AlertCircle, ArrowRight } from "lucide-react";
+import { FileSpreadsheet, Upload, CheckCircle2, AlertCircle, ArrowLeft, ArrowRight } from "lucide-react";
+import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { useToast } from "@/components/ui/Toast";
 
 export const AdminImportPage: React.FC = () => {
   const { token, user } = useAuth();
+  const { success, error: toastError } = useToast();
   const importCsvMutation = useMutation(api.admin.importListingsCsv);
 
   const [csvText, setCsvText] = useState(`companyName,roleTitle,description,requiredSkills,location,remoteStatus,stipend,applicationDeadline,originalUrl,sourceName
@@ -19,7 +24,7 @@ GitHub,Full Stack Intern (Developer Tools),Contribute to GitHub Codespaces and G
   const [error, setError] = useState<string | null>(null);
 
   if (user?.role !== "admin") {
-    return <div className="p-8 text-center text-xs text-red-400">Admin privileges required.</div>;
+    return <div className="p-8 text-center text-xs text-rose-400">Admin privileges required.</div>;
   }
 
   const handleImport = async (e: React.FormEvent) => {
@@ -36,14 +41,12 @@ GitHub,Full Stack Intern (Developer Tools),Contribute to GitHub Codespaces and G
         throw new Error("CSV contains no rows to import.");
       }
 
-      const headers = lines[0].split(",").map((h) => h.trim());
       const parsedListings: any[] = [];
 
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i].trim();
         if (!line) continue;
 
-        // Simple CSV regex to handle commas inside quotes
         const values: string[] = [];
         let inQuote = false;
         let curVal = "";
@@ -86,85 +89,89 @@ GitHub,Full Stack Intern (Developer Tools),Contribute to GitHub Codespaces and G
         listings: parsedListings,
       });
       setResult(res);
+      success("Import Finished", `Added ${res.added} new listings; skipped ${res.duplicates} duplicates.`);
     } catch (err: any) {
       setError(err.message || "Failed to parse and import CSV data.");
+      toastError("Import Error", err.message);
     } finally {
       setImporting(false);
     }
   };
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+    <div className="space-y-8 max-w-7xl mx-auto">
+      {/* 1. HEADER */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-white/[0.08] light:border-slate-200">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-950 text-red-300 border border-red-800/60 mb-2">
-            <FileSpreadsheet className="w-3.5 h-3.5 text-red-400" />
-            <span>Data Ingestion</span>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-950/80 border border-rose-500/30 text-rose-300 light:bg-rose-50 light:text-rose-700 mb-2">
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <span>Bulk Ingestion Adapter</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            Bulk CSV Internship Ingestion
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white light:text-slate-900 tracking-tight">
+            CSV Ingestion & Duplicate Deduplication
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-2xl leading-relaxed">
-            Ingest structured listings from verified external partners, campus placement drives, and official feeds with automatic duplicate suppression.
+          <p className="text-xs sm:text-sm text-slate-400 light:text-slate-600 mt-1 max-w-2xl leading-relaxed">
+            Import bulk listings directly via standard CSV format with automatic duplicate detection, skill taxonomy normalization, and audit logging.
           </p>
         </div>
 
-        <Link
-          to="/admin"
-          className="text-xs text-slate-400 hover:text-white px-3 py-2 rounded-lg bg-slate-800 border border-slate-700"
-        >
-          Back to Admin Overview
+        <Link to="/admin">
+          <Button variant="outline" size="sm">
+            <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+            <span>Back to Console</span>
+          </Button>
         </Link>
       </div>
 
-      {result && (
-        <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-800/80 text-xs text-emerald-200 flex items-start gap-3">
-          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-          <div>
-            <h4 className="font-bold text-white">Ingestion Completed Successfully</h4>
-            <p className="mt-0.5">
-              Processed: {result.processed} listings • Added: <strong>{result.added}</strong> new • Skipped: <strong>{result.duplicates}</strong> existing duplicates.
-            </p>
-          </div>
-        </div>
-      )}
-
       {error && (
-        <div className="p-4 rounded-xl bg-red-950/40 border border-red-800/80 text-xs text-red-200 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-          <p>{error}</p>
+        <div className="p-4 rounded-xl bg-rose-950/30 border border-rose-500/40 text-xs text-rose-300 flex items-start gap-2.5">
+          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+          <span>{error}</span>
         </div>
       )}
 
-      {/* Import Form */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xl space-y-4">
-        <h3 className="text-sm font-bold text-white">CSV Data Stream</h3>
-        <p className="text-xs text-slate-400">
-          Paste comma-separated listings below. Columns: <code className="text-cyan-400">companyName, roleTitle, description, requiredSkills, location, remoteStatus, stipend, applicationDeadline, originalUrl, sourceName</code>
-        </p>
+      {result && (
+        <Card className="p-5 bg-emerald-950/20 border-emerald-500/40 space-y-2">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+            <h3 className="text-sm font-bold text-white light:text-slate-900">
+              CSV Ingestion Complete
+            </h3>
+          </div>
+          <p className="text-xs text-emerald-300">
+            Successfully imported <strong className="text-white">{result.added}</strong> new listings. Skipped{" "}
+            <strong className="text-white">{result.duplicates}</strong> existing duplicate records.
+          </p>
+        </Card>
+      )}
 
+      {/* 2. CSV INPUT FORM */}
+      <Card className="p-6 sm:p-8 space-y-4">
         <form onSubmit={handleImport} className="space-y-4">
-          <textarea
-            rows={10}
-            required
-            value={csvText}
-            onChange={(e) => setCsvText(e.target.value)}
-            className="w-full p-3 font-mono text-xs bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-400 leading-relaxed"
-          />
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-300 light:text-slate-700 uppercase tracking-wider block">
+              Raw CSV Records
+            </label>
+            <textarea
+              rows={12}
+              value={csvText}
+              onChange={(e) => setCsvText(e.target.value)}
+              className="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-4 text-xs font-mono text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              required
+            />
+          </div>
 
-          <div className="flex justify-end">
-            <button
-              type="submit"
-              disabled={importing}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/20 disabled:opacity-50"
-            >
-              {importing ? "Processing..." : "Run Ingestion Batch"}
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+          <div className="flex items-center justify-between pt-2">
+            <span className="text-xs text-slate-500">
+              Headers required: companyName, roleTitle, description, requiredSkills, location, remoteStatus
+            </span>
+            <Button variant="glow" size="md" type="submit" isLoading={importing}>
+              <Upload className="w-4 h-4 mr-1.5" />
+              <span>Import & Deduplicate</span>
+            </Button>
           </div>
         </form>
-      </div>
+      </Card>
     </div>
   );
 };

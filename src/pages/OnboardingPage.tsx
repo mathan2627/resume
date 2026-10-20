@@ -14,10 +14,17 @@ import {
   Check,
   Plus,
   X,
+  ChevronLeft,
 } from "lucide-react";
+import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Input, Select } from "@/components/ui/Input";
+import { useToast } from "@/components/ui/Toast";
 
 export const OnboardingPage: React.FC = () => {
   const { token, user } = useAuth();
+  const { success, error: toastError } = useToast();
   const navigate = useNavigate();
   const completeOnboardingMutation = useMutation(api.profiles.completeOnboarding);
 
@@ -62,9 +69,10 @@ export const OnboardingPage: React.FC = () => {
         locationPreference,
         weeklyAvailabilityHours: Number(weeklyAvailability),
       });
+      success("Profile Configured", "Welcome to your ProofPath AI workspace!");
       navigate("/dashboard");
-    } catch (e) {
-      console.error("Onboarding error:", e);
+    } catch (e: any) {
+      toastError("Onboarding error", e.message);
       navigate("/dashboard");
     } finally {
       setLoading(false);
@@ -72,204 +80,142 @@ export const OnboardingPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0b0f19] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 text-slate-100">
+    <div className="min-h-screen bg-[#080c14] light:bg-slate-50 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 text-slate-100 light:text-slate-900 transition-colors">
       <div className="max-w-2xl mx-auto w-full">
         {/* Progress header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/60 border border-cyan-800/50 text-cyan-400 text-xs font-semibold mb-3">
-            <ShieldCheck className="w-3.5 h-3.5" />
+        <div className="text-center mb-8 space-y-2">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-blue-950/80 border border-blue-500/30 text-cyan-300 light:bg-blue-50 light:text-blue-700 text-xs font-semibold">
+            <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
             <span>Profile Onboarding</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white">Let's Tailor Your ProofPath Journey</h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Step {step} of 3 — Tell us your background so we can recommend relevant internships and skill challenges.
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white light:text-slate-900 tracking-tight">
+            Tailor Your Career Intelligence
+          </h1>
+          <p className="text-xs text-slate-400 light:text-slate-500">
+            Step {step} of 3 — Tell us your background so we can recommend relevant opportunities and practical challenges.
           </p>
 
-          <div className="flex items-center justify-center gap-2 mt-4">
-            <div className={`h-1.5 w-12 rounded-full transition-all ${step >= 1 ? "bg-cyan-400" : "bg-slate-800"}`} />
-            <div className={`h-1.5 w-12 rounded-full transition-all ${step >= 2 ? "bg-cyan-400" : "bg-slate-800"}`} />
-            <div className={`h-1.5 w-12 rounded-full transition-all ${step >= 3 ? "bg-cyan-400" : "bg-slate-800"}`} />
+          <div className="flex items-center justify-center gap-2 pt-2">
+            <div className={`h-1.5 w-14 rounded-full transition-all ${step >= 1 ? "bg-cyan-400" : "bg-slate-800"}`} />
+            <div className={`h-1.5 w-14 rounded-full transition-all ${step >= 2 ? "bg-cyan-400" : "bg-slate-800"}`} />
+            <div className={`h-1.5 w-14 rounded-full transition-all ${step >= 3 ? "bg-cyan-400" : "bg-slate-800"}`} />
           </div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl">
+        <Card className="p-6 sm:p-8 shadow-2xl border-slate-800 light:border-slate-200">
           {/* STEP 1: EDUCATION */}
           {step === 1 && (
-            <div className="space-y-4 animate-in fade-in duration-200">
-              <div className="flex items-center gap-2.5 pb-3 border-b border-slate-800">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2.5 pb-3 border-b border-slate-800 light:border-slate-200">
                 <GraduationCap className="w-5 h-5 text-cyan-400" />
-                <h2 className="text-base font-bold text-white">College & Degree Information</h2>
+                <h3 className="text-sm font-bold text-white light:text-slate-900">Education & Academic Background</h3>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  University / College Name
-                </label>
-                <input
-                  type="text"
-                  value={college}
-                  onChange={(e) => setCollege(e.target.value)}
-                  placeholder="e.g. Ramco Institute of Technology / MIT / Anna University"
-                  className="block w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700/80 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-400"
-                />
-              </div>
+              <Input
+                label="College / University Name"
+                placeholder="e.g. National Institute of Technology, Trichy"
+                value={college}
+                onChange={(e) => setCollege(e.target.value)}
+                required
+              />
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Course / Major</label>
-                  <input
-                    type="text"
-                    value={course}
-                    onChange={(e) => setCourse(e.target.value)}
-                    placeholder="B.Tech Computer Science"
-                    className="block w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700/80 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-400"
-                  />
-                </div>
+              <Select
+                label="Course / Degree"
+                value={course}
+                onChange={(e) => setCourse(e.target.value)}
+              >
+                <option value="B.Tech / B.E. Computer Science">B.Tech / B.E. Computer Science</option>
+                <option value="B.Tech / B.E. Information Technology">B.Tech / B.E. Information Technology</option>
+                <option value="B.Tech / B.E. AI & Data Science">B.Tech / B.E. AI & Data Science</option>
+                <option value="BCA / MCA (Computer Applications)">BCA / MCA (Computer Applications)</option>
+                <option value="B.Sc / M.Sc Computer Science">B.Sc / M.Sc Computer Science</option>
+                <option value="Self-Taught Developer">Self-Taught / Bootcamp Developer</option>
+              </Select>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Graduation Year</label>
-                  <select
-                    value={graduationYear}
-                    onChange={(e) => setGraduationYear(Number(e.target.value))}
-                    className="block w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700/80 rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-cyan-400"
-                  >
-                    <option value={2025}>2025</option>
-                    <option value={2026}>2026</option>
-                    <option value={2027}>2027</option>
-                    <option value={2028}>2028</option>
-                  </select>
-                </div>
-              </div>
+              <Select
+                label="Expected Graduation Year"
+                value={graduationYear}
+                onChange={(e) => setGraduationYear(Number(e.target.value))}
+              >
+                <option value={2025}>2025 (Immediate Graduate)</option>
+                <option value={2026}>2026 (Final Year)</option>
+                <option value={2027}>2027 (Pre-Final Year)</option>
+                <option value={2028}>2028</option>
+              </Select>
 
               <div className="pt-4 flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setStep(2)}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/20"
-                >
-                  Continue <ArrowRight className="w-3.5 h-3.5" />
-                </button>
+                <Button variant="glow" size="md" onClick={() => setStep(2)}>
+                  <span>Continue</span>
+                  <ArrowRight className="w-4 h-4 ml-1.5" />
+                </Button>
               </div>
             </div>
           )}
 
-          {/* STEP 2: CAREER GOALS & LOCATION */}
+          {/* STEP 2: PREFERENCES */}
           {step === 2 && (
-            <div className="space-y-4 animate-in fade-in duration-200">
-              <div className="flex items-center gap-2.5 pb-3 border-b border-slate-800">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2.5 pb-3 border-b border-slate-800 light:border-slate-200">
                 <Briefcase className="w-5 h-5 text-cyan-400" />
-                <h2 className="text-base font-bold text-white">Internship Preferences</h2>
+                <h3 className="text-sm font-bold text-white light:text-slate-900">Target Role & Preferences</h3>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Target Internship Role
-                </label>
-                <select
-                  value={preferredRole}
-                  onChange={(e) => setPreferredRole(e.target.value)}
-                  className="block w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700/80 rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-cyan-400"
-                >
-                  <option value="Frontend Developer">Frontend Developer</option>
-                  <option value="Backend Developer">Backend Developer</option>
-                  <option value="Full Stack Developer">Full Stack Developer</option>
-                  <option value="AI / Machine Learning Engineer">AI / Machine Learning Engineer</option>
-                  <option value="DevOps & Cloud Engineer">DevOps & Cloud Engineer</option>
-                  <option value="Data Analyst / Data Engineer">Data Analyst / Data Engineer</option>
-                </select>
-              </div>
+              <Select
+                label="Preferred Target Role"
+                value={preferredRole}
+                onChange={(e) => setPreferredRole(e.target.value)}
+              >
+                <option value="Frontend Developer">Frontend Developer (React / Next.js)</option>
+                <option value="Backend Systems Engineer">Backend Systems Engineer (Go / Node / Java)</option>
+                <option value="Full Stack Developer">Full Stack Developer</option>
+                <option value="AI & Machine Learning Engineer">AI & Machine Learning Engineer</option>
+                <option value="DevOps & Cloud Engineer">DevOps & Cloud Engineer</option>
+                <option value="Mobile App Developer">Mobile App Developer (Flutter / React Native)</option>
+              </Select>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Work Arrangement</label>
-                  <select
-                    value={remotePreference}
-                    onChange={(e) => setRemotePreference(e.target.value as any)}
-                    className="block w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700/80 rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-cyan-400"
-                  >
-                    <option value="any">Any (Remote, Hybrid, or Onsite)</option>
-                    <option value="remote">Remote Only</option>
-                    <option value="hybrid">Hybrid</option>
-                    <option value="onsite">Onsite</option>
-                  </select>
-                </div>
+              <Select
+                label="Workplace Preference"
+                value={remotePreference}
+                onChange={(e) => setRemotePreference(e.target.value as any)}
+              >
+                <option value="any">Open to Any (Remote, Hybrid, or On-site)</option>
+                <option value="remote">Remote Only</option>
+                <option value="hybrid">Hybrid (1-3 days in office)</option>
+                <option value="onsite">On-site Only</option>
+              </Select>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Preferred Location</label>
-                  <input
-                    type="text"
-                    value={locationPreference}
-                    onChange={(e) => setLocationPreference(e.target.value)}
-                    placeholder="Bengaluru, Hyderabad, Chennai, Remote"
-                    className="block w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700/80 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-400"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Weekly Availability (Hours / Week)
-                </label>
-                <input
-                  type="number"
-                  min={5}
-                  max={45}
-                  value={weeklyAvailability}
-                  onChange={(e) => setWeeklyAvailability(Number(e.target.value))}
-                  className="block w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700/80 rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-cyan-400"
-                />
-              </div>
+              <Input
+                label="Location Preference"
+                placeholder="e.g. Bengaluru, India or Global Remote"
+                value={locationPreference}
+                onChange={(e) => setLocationPreference(e.target.value)}
+              />
 
               <div className="pt-4 flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => setStep(1)}
-                  className="text-xs text-slate-400 hover:text-white"
-                >
-                  Back
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStep(3)}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/20"
-                >
-                  Continue <ArrowRight className="w-3.5 h-3.5" />
-                </button>
+                <Button variant="ghost" size="sm" onClick={() => setStep(1)}>
+                  <ChevronLeft className="w-4 h-4 mr-1" />
+                  <span>Back</span>
+                </Button>
+                <Button variant="glow" size="md" onClick={() => setStep(3)}>
+                  <span>Continue</span>
+                  <ArrowRight className="w-4 h-4 ml-1.5" />
+                </Button>
               </div>
             </div>
           )}
 
-          {/* STEP 3: TECHNICAL SKILLS */}
+          {/* STEP 3: SKILLS */}
           {step === 3 && (
-            <div className="space-y-4 animate-in fade-in duration-200">
-              <div className="flex items-center gap-2.5 pb-3 border-b border-slate-800">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2.5 pb-3 border-b border-slate-800 light:border-slate-200">
                 <Code2 className="w-5 h-5 text-cyan-400" />
-                <h2 className="text-base font-bold text-white">Your Technical Skills</h2>
+                <h3 className="text-sm font-bold text-white light:text-slate-900">Your Technical Competencies</h3>
               </div>
-              <p className="text-xs text-slate-400">
-                Add skills you currently use. These will initially be marked as <strong className="text-amber-400 font-semibold">Claimed</strong>. You will subsequently connect GitHub projects and complete challenges to turn them into verified evidence!
+
+              <p className="text-xs text-slate-400 light:text-slate-500">
+                Add skills you know or are currently studying. You can link GitHub projects or take adaptive challenges later to verify them.
               </p>
 
-              {/* Skills Tags List */}
-              <div className="flex flex-wrap gap-2 p-3 rounded-xl bg-slate-950 border border-slate-800 min-h-24">
-                {skills.map((skill) => (
-                  <span
-                    key={skill}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium bg-slate-800 text-slate-200 border border-slate-700"
-                  >
-                    <span>{skill}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveSkill(skill)}
-                      className="text-slate-400 hover:text-red-400"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-
-              {/* Add New Skill Input */}
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -281,60 +227,51 @@ export const OnboardingPage: React.FC = () => {
                       handleAddSkill();
                     }
                   }}
-                  placeholder="Type a skill (e.g. Docker, PostgreSQL, Go) and press Add"
-                  className="flex-1 px-3 py-2 text-xs bg-slate-950 border border-slate-700/80 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                  placeholder="e.g. Docker, PostgreSQL, Go..."
+                  className="flex-1 bg-slate-900/90 light:bg-white border border-slate-800 light:border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-100 light:text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                 />
-                <button
-                  type="button"
-                  onClick={handleAddSkill}
-                  className="px-4 py-2 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-white border border-slate-700"
-                >
-                  Add
-                </button>
+                <Button variant="secondary" size="sm" type="button" onClick={handleAddSkill}>
+                  <Plus className="w-4 h-4 mr-1" />
+                  <span>Add</span>
+                </Button>
               </div>
 
-              {/* Suggestions */}
-              <div className="pt-2">
-                <span className="text-[11px] text-slate-500 block mb-1.5">Commonly added:</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {["Next.js", "Node.js", "Docker", "PostgreSQL", "Tailwind CSS", "Git & GitHub", "Machine Learning"].map(
-                    (sugg) => (
-                      <button
-                        key={sugg}
-                        type="button"
-                        onClick={() => {
-                          if (!skills.includes(sugg)) setSkills([...skills, sugg]);
-                        }}
-                        className="px-2 py-0.5 rounded text-[10px] bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800"
-                      >
-                        + {sugg}
-                      </button>
-                    )
-                  )}
-                </div>
+              <div className="flex flex-wrap gap-2 pt-2">
+                {skills.map((skill) => (
+                  <span
+                    key={skill}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-blue-950/40 border border-blue-500/30 text-xs font-semibold text-cyan-300"
+                  >
+                    <span>{skill}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveSkill(skill)}
+                      className="text-slate-400 hover:text-rose-400"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </span>
+                ))}
               </div>
 
-              <div className="pt-6 border-t border-slate-800 flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => setStep(2)}
-                  className="text-xs text-slate-400 hover:text-white"
-                >
-                  Back
-                </button>
-                <button
-                  type="button"
-                  disabled={loading}
+              <div className="pt-6 flex items-center justify-between border-t border-slate-800 light:border-slate-200">
+                <Button variant="ghost" size="sm" onClick={() => setStep(2)}>
+                  <ChevronLeft className="w-4 h-4 mr-1" />
+                  <span>Back</span>
+                </Button>
+                <Button
+                  variant="glow"
+                  size="md"
+                  isLoading={loading}
                   onClick={handleFinish}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 shadow-lg shadow-blue-600/20 disabled:opacity-50"
                 >
-                  {loading ? "Saving Profile..." : "Complete & Open Dashboard"}
-                  <Check className="w-3.5 h-3.5" />
-                </button>
+                  <span>Complete Onboarding</span>
+                  <Check className="w-4 h-4 ml-1.5" />
+                </Button>
               </div>
             </div>
           )}
-        </div>
+        </Card>
       </div>
     </div>
   );

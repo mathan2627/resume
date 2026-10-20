@@ -22,6 +22,7 @@ import { AdminPage } from "@/pages/AdminPage";
 import { AdminListingsPage } from "@/pages/AdminListingsPage";
 import { AdminUsersPage } from "@/pages/AdminUsersPage";
 import { AdminImportPage } from "@/pages/AdminImportPage";
+import { SettingsPage } from "@/pages/SettingsPage";
 
 export const App: React.FC = () => {
   return (
@@ -33,19 +34,20 @@ export const App: React.FC = () => {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
         <Route path="/p/:tokenOrSlug" element={<PublicPassportView />} />
+        <Route path="/internships" element={<InternshipsPage />} />
 
         {/* Authenticated Workspace Routes */}
         <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/skills" element={<SkillsProofPage />} />
           <Route path="/challenges" element={<ChallengesPage />} />
-          <Route path="/internships" element={<InternshipsPage />} />
           <Route path="/roadmap" element={<RoadmapPage />} />
           <Route path="/applications" element={<ApplicationsPage />} />
           <Route path="/resume" element={<ResumePage />} />
           <Route path="/interview" element={<InterviewPage />} />
           <Route path="/passport" element={<ProofPassportPage />} />
           <Route path="/assistant" element={<CareerAssistantPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
 
           {/* Recruiter Workspace Routes */}
           <Route path="/recruiter" element={<RecruiterPortalPage />} />

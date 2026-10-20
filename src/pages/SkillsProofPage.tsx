@@ -16,11 +16,24 @@ import {
   Sparkles,
   Info,
   Search,
+  Star,
+  Layers,
+  ChevronRight,
+  Terminal,
 } from "lucide-react";
 import { analyzePublicGitHubRepo } from "@/lib/githubAnalyzer";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Tabs } from "@/components/ui/Tabs";
+import { Modal } from "@/components/ui/Modal";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { useToast } from "@/components/ui/Toast";
 
 export const SkillsProofPage: React.FC = () => {
   const { token } = useAuth();
+  const { success, error: toastError } = useToast();
 
   const evidenceSummary = useQuery(api.skills.getUserEvidenceSummary, token ? { token } : "skip");
   const repositories = useQuery(api.repositories.listUserRepositories, token ? { token } : "skip");
@@ -29,7 +42,7 @@ export const SkillsProofPage: React.FC = () => {
   const updateClaimMutation = useMutation(api.skills.updateSkillClaim);
 
   // Filter state
-  const [activeTab, setActiveTab] = useState<"all" | "challenge_assessed" | "evidence_found" | "claimed" | "evidence_insufficient">("all");
+  const [activeTab, setActiveTab] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
   // GitHub Modal state
@@ -67,10 +80,12 @@ export const SkillsProofPage: React.FC = () => {
         evidenceList: analyzed.evidenceList,
       });
 
+      success("Repository Scanned", `Extracted authentic code evidence from ${analyzed.repoName}.`);
       setRepoModalOpen(false);
       setRepoUrlInput("");
     } catch (err: any) {
       setRepoError(err.message || "Failed to analyze repository. Verify URL is public and valid.");
+      toastError("Analysis Failed", err.message);
     } finally {
       setAnalyzingRepo(false);
     }
@@ -86,10 +101,21 @@ export const SkillsProofPage: React.FC = () => {
         skillName: newSkillClaim.trim(),
         status: "claimed",
       });
+      success("Skill Claimed", `Added ${newSkillClaim.trim()} to your claimed skills.`);
       setClaimModalOpen(false);
       setNewSkillClaim("");
     } catch (err: any) {
-      alert(err.message);
+      toastError("Error", err.message);
+    }
+  };
+
+  const handleRemoveRepo = async (repoId: any) => {
+    if (!token) return;
+    try {
+      await removeRepoMutation({ token, repositoryId: repoId });
+      success("Repository Removed", "Unlinked repository and associated evidence.");
+    } catch (err: any) {
+      toastError("Error", err.message);
     }
   };
 
@@ -104,331 +130,262 @@ export const SkillsProofPage: React.FC = () => {
     return matchesTab && matchesSearch;
   });
 
+  const getStatusBadge = (status: string, score: number) => {
+    switch (status) {
+      case "challenge_assessed":
+        return <Badge variant="challenge">Assessed ({score}%)</Badge>;
+      case "evidence_found":
+        return <Badge variant="evidence">Project Evidence ({score}%)</Badge>;
+      case "claimed":
+        return <Badge variant="claim">Claimed (Unverified)</Badge>;
+      case "evidence_insufficient":
+        return <Badge variant="warning">Evidence Insufficient</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+    <div className="space-y-8 max-w-7xl mx-auto">
+      {/* 1. HEADER */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-white/[0.08] light:border-slate-200">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-cyan-950 text-cyan-300 border border-cyan-800/60 mb-2">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>The Proof Engine</span>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-950/80 border border-blue-500/30 text-cyan-300 light:bg-blue-50 light:text-blue-700 mb-2">
+            <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Verification Index</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white light:text-slate-900 tracking-tight">
             Skill Proof Engine
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-2xl leading-relaxed">
-            Connecting resume claims, GitHub project artifacts, and practical challenge performance into an explainable verification matrix.
+          <p className="text-xs sm:text-sm text-slate-400 light:text-slate-600 mt-1 max-w-2xl leading-relaxed">
+            Convert self-declared resume claims into verifiable evidence backed by public GitHub repositories and timed adaptive assessments.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setRepoModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 shadow-md shadow-blue-600/20 transition-all"
-          >
-            <GitBranch className="w-4 h-4 text-cyan-300" />
-            <span>Inspect GitHub Repo</span>
-          </button>
-          <button
-            onClick={() => setClaimModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-all"
-          >
-            <Plus className="w-4 h-4" />
+        <div className="flex items-center gap-2.5">
+          <Button variant="secondary" size="sm" onClick={() => setClaimModalOpen(true)}>
+            <Plus className="w-4 h-4 mr-1" />
             <span>Claim Skill</span>
-          </button>
+          </Button>
+          <Button variant="glow" size="sm" onClick={() => setRepoModalOpen(true)}>
+            <GitBranch className="w-4 h-4 mr-1 text-cyan-400" />
+            <span>Link GitHub Repo</span>
+          </Button>
         </div>
       </div>
 
-      {/* Linked GitHub Repositories Banner */}
-      {repositories && repositories.length > 0 && (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold text-slate-300 flex items-center gap-2">
-              <GitBranch className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Connected Repositories ({repositories.length})</span>
-            </h3>
-            <span className="text-[11px] text-slate-500">Auto-scanned for technology artifacts</span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {repositories.map((repo) => (
-              <div
-                key={repo._id}
-                className="p-3 rounded-lg bg-slate-950 border border-slate-800/80 flex items-start justify-between gap-3 text-xs"
-              >
-                <div className="overflow-hidden">
-                  <a
-                    href={repo.repoUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="font-bold text-white hover:text-cyan-400 flex items-center gap-1 truncate"
-                  >
-                    <span>{repo.owner}/{repo.repoName}</span>
-                    <ExternalLink className="w-3 h-3 shrink-0" />
-                  </a>
-                  <p className="text-[11px] text-slate-400 truncate mt-0.5">{repo.description}</p>
-                  <div className="flex items-center gap-3 text-[10px] text-slate-500 mt-2">
-                    <span>{repo.language}</span>
-                    <span>★ {repo.stars}</span>
-                    <span>⑂ {repo.forks}</span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => token && removeRepoMutation({ token, repositoryId: repo._id })}
-                  className="p-1 text-slate-500 hover:text-red-400 rounded transition-colors"
-                  title="Remove repository"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Filter Tabs & Search */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-          <button
-            onClick={() => setActiveTab("all")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-              activeTab === "all"
-                ? "bg-slate-800 text-white border border-slate-700"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            All Skills ({evidenceList.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("challenge_assessed")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-              activeTab === "challenge_assessed"
-                ? "bg-emerald-950 text-emerald-300 border border-emerald-800"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            Challenge Assessed ({evidenceSummary?.counts?.challengeAssessed || 0})
-          </button>
-          <button
-            onClick={() => setActiveTab("evidence_found")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-              activeTab === "evidence_found"
-                ? "bg-blue-950 text-blue-300 border border-blue-800"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            Evidence Found ({evidenceSummary?.counts?.evidenceFound || 0})
-          </button>
-          <button
-            onClick={() => setActiveTab("claimed")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-              activeTab === "claimed"
-                ? "bg-amber-950 text-amber-300 border border-amber-800"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            Claimed Only ({evidenceSummary?.counts?.claimed || 0})
-          </button>
+      {/* 2. REPOSITORIES CAROUSEL / GRID */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base sm:text-lg font-bold text-white light:text-slate-900 flex items-center gap-2">
+            <GitBranch className="w-4 h-4 text-emerald-400" />
+            <span>Linked Public GitHub Repositories</span>
+          </h2>
+          <span className="text-xs text-slate-400">
+            {repositories?.length || 0} repositories analyzed
+          </span>
         </div>
 
-        {/* Search */}
-        <div className="relative w-full sm:w-64">
-          <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search verified skills..."
-            className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-900 border border-slate-800 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+        {(!repositories || repositories.length === 0) ? (
+          <EmptyState
+            icon={<GitBranch className="w-6 h-6 text-emerald-400" />}
+            title="No GitHub Repositories Linked"
+            description="Link your public GitHub projects to automatically extract code evidence, language distributions, and commit proofs."
+            actionLabel="Link First Repository"
+            onAction={() => setRepoModalOpen(true)}
           />
-        </div>
-      </div>
-
-      {/* Evidence Cards Matrix */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredEvidence.length > 0 ? (
-          filteredEvidence.map((ev) => (
-            <div
-              key={ev._id}
-              className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 hover:border-slate-700 transition-all flex flex-col justify-between"
-            >
-              <div className="space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="text-sm font-bold text-white">{ev.skillName}</h3>
-                  <div className="text-right">
-                    <span
-                      className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                        ev.status === "challenge_assessed"
-                          ? "bg-emerald-950 text-emerald-300 border border-emerald-800"
-                          : ev.status === "evidence_found"
-                          ? "bg-blue-950 text-blue-300 border border-blue-800"
-                          : "bg-amber-950 text-amber-300 border border-amber-800"
-                      }`}
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {repositories.map((repo) => (
+              <Card key={repo._id} className="p-5 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <a
+                      href={repo.repoUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm font-semibold text-white light:text-slate-900 hover:text-cyan-400 flex items-center gap-1.5 truncate"
                     >
-                      {ev.status === "challenge_assessed"
-                        ? "Assessed"
-                        : ev.status === "evidence_found"
-                        ? "Evidence Found"
-                        : "Claimed"}
+                      <span className="truncate">{repo.repoName}</span>
+                      <ExternalLink className="w-3.5 h-3.5 shrink-0 text-slate-500" />
+                    </a>
+                    <button
+                      onClick={() => handleRemoveRepo(repo._id)}
+                      className="text-slate-500 hover:text-rose-400 p-1"
+                      title="Unlink repository"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <p className="text-xs text-slate-400 light:text-slate-500 line-clamp-2 mb-3">
+                    {repo.description || "No description provided."}
+                  </p>
+
+                  <div className="flex items-center gap-3 text-xs text-slate-400 mb-3">
+                    <span className="flex items-center gap-1">
+                      <Star className="w-3.5 h-3.5 text-amber-400" /> {repo.stars}
                     </span>
-                    <p className="text-xs font-extrabold text-white mt-1">
-                      {ev.evidenceScore} <span className="text-[10px] font-normal text-slate-500">/100</span>
-                    </p>
+                    <Badge variant="outline" size="sm">
+                      {repo.language || "Multi-language"}
+                    </Badge>
                   </div>
                 </div>
 
-                <p className="text-xs text-slate-300 leading-relaxed">{ev.explanation}</p>
-
-                {/* Supporting Code Citation */}
-                {ev.filePath && (
-                  <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-[11px] font-mono space-y-1">
-                    <div className="flex items-center justify-between text-cyan-400">
-                      <span className="truncate">{ev.filePath}</span>
-                      {ev.sourceUrl && (
-                        <a
-                          href={ev.sourceUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="hover:text-white"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
-                      )}
-                    </div>
-                    {ev.excerpt && (
-                      <p className="text-[10px] text-slate-400 truncate">{ev.excerpt}</p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Bottom Action */}
-              <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
-                <span className="text-slate-500 text-[10px] capitalize">Confidence: {ev.confidence}</span>
-                {ev.status !== "challenge_assessed" && (
-                  <Link
-                    to="/challenges"
-                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-cyan-400 hover:text-cyan-300"
-                  >
-                    Take Challenge <Code2 className="w-3 h-3" />
-                  </Link>
-                )}
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="col-span-full text-center py-12 bg-slate-900/40 rounded-xl border border-slate-800 space-y-3">
-            <ShieldCheck className="w-10 h-10 text-slate-600 mx-auto" />
-            <h4 className="text-sm font-bold text-white">No Skills In This Category Yet</h4>
-            <p className="text-xs text-slate-400 max-w-md mx-auto">
-              Upload your resume or inspect a public GitHub repository to populate your verified Skill Proof matrix.
-            </p>
+                <div className="pt-3 border-t border-slate-800/60 light:border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                  <span>Last scanned: {new Date(repo.lastAnalyzedAt).toLocaleDateString()}</span>
+                  <Badge variant="verified" size="sm">AST Verified</Badge>
+                </div>
+              </Card>
+            ))}
           </div>
         )}
       </div>
 
-      {/* GITHUB INSPECTION MODAL */}
-      {repoModalOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <GitBranch className="w-4 h-4 text-cyan-400" />
-                <span>Inspect Public GitHub Repository</span>
-              </h3>
-              <button
-                onClick={() => setRepoModalOpen(false)}
-                className="text-slate-400 hover:text-white text-xs"
-              >
-                ✕
-              </button>
-            </div>
-
-            <p className="text-xs text-slate-400 leading-relaxed">
-              ProofPath AI's GitHub analyzer inspects public language breakdown, README architectural descriptions, and configuration manifests to extract supporting proof.
+      {/* 3. SKILL EVIDENCE EXPLORER */}
+      <div className="space-y-4 pt-4 border-t border-white/[0.08] light:border-slate-200">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-base sm:text-lg font-bold text-white light:text-slate-900">
+              Technical Skill Evidence Inventory
+            </h2>
+            <p className="text-xs text-slate-400 light:text-slate-500">
+              Filter by verification status to inspect excerpts and pass adaptive challenges.
             </p>
+          </div>
 
-            {repoError && (
-              <div className="p-3 rounded-lg bg-red-950/40 border border-red-800/60 text-xs text-red-300 flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                <span>{repoError}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleAnalyzeGitHub} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Public Repository URL
-                </label>
-                <input
-                  type="url"
-                  required
-                  value={repoUrlInput}
-                  onChange={(e) => setRepoUrlInput(e.target.value)}
-                  placeholder="https://github.com/facebook/react"
-                  className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700/80 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-400"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setRepoModalOpen(false)}
-                  className="px-4 py-2 text-xs text-slate-400 hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={analyzingRepo}
-                  className="inline-flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-50"
-                >
-                  {analyzingRepo ? "Analyzing Repo..." : "Analyze & Extract Evidence"}
-                </button>
-              </div>
-            </form>
+          <div className="w-full sm:w-64">
+            <Input
+              placeholder="Search verified skills..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              leftIcon={<Search className="w-4 h-4 text-slate-400" />}
+            />
           </div>
         </div>
-      )}
 
-      {/* MANUAL CLAIM MODAL */}
-      {claimModalOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
-            <h3 className="text-sm font-bold text-white">Claim a Technical Skill</h3>
-            <p className="text-xs text-slate-400">
-              Claimed skills start at 35% base score until supported by GitHub code evidence or practical assessment.
-            </p>
+        {/* Tab Filters */}
+        <Tabs
+          activeTab={activeTab}
+          onChange={setActiveTab}
+          tabs={[
+            { id: "all", label: "All Skills", badge: evidenceList.length },
+            { id: "challenge_assessed", label: "Assessed", badge: evidenceSummary?.counts?.challengeAssessed || 0 },
+            { id: "evidence_found", label: "Project Proven", badge: evidenceSummary?.counts?.evidenceFound || 0 },
+            { id: "claimed", label: "Claimed Only", badge: evidenceSummary?.counts?.claimed || 0 },
+            { id: "evidence_insufficient", label: "Gaps", badge: evidenceSummary?.counts?.insufficient || 0 },
+          ]}
+        />
 
-            <form onSubmit={handleAddClaim} className="space-y-4">
-              <input
-                type="text"
-                required
-                value={newSkillClaim}
-                onChange={(e) => setNewSkillClaim(e.target.value)}
-                placeholder="e.g. Docker, Rust, Kubernetes"
-                className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700/80 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-400"
-              />
-              <div className="flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setClaimModalOpen(false)}
-                  className="px-3 py-1.5 text-xs text-slate-400 hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 rounded-lg text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500"
-                >
-                  Save Claim
-                </button>
-              </div>
-            </form>
+        {/* Evidence List */}
+        {filteredEvidence.length === 0 ? (
+          <EmptyState
+            title="No Skills in this Category"
+            description="Upload your resume or link a GitHub repository to automatically populate your Skill Proof Engine."
+            actionLabel="Add Skill Claim"
+            onAction={() => setClaimModalOpen(true)}
+          />
+        ) : (
+          <div className="space-y-3">
+            {filteredEvidence.map((ev) => (
+              <Card key={ev._id} className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="space-y-1.5 flex-1 min-w-0">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-base font-bold text-white light:text-slate-900 truncate">
+                      {ev.skillName}
+                    </h3>
+                    {getStatusBadge(ev.status, ev.evidenceScore)}
+                    <span className="text-xs text-slate-500 hidden sm:inline">
+                      Confidence: <strong className="text-slate-300 light:text-slate-700 uppercase">{ev.confidence}</strong>
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-slate-300 light:text-slate-600 leading-relaxed">
+                    {ev.explanation}
+                  </p>
+
+                  {ev.excerpt && (
+                    <div className="p-2.5 rounded-lg bg-slate-950 light:bg-slate-900 border border-slate-800 text-slate-400 font-mono text-[11px] truncate">
+                      <Terminal className="w-3 h-3 text-cyan-400 inline mr-1.5" />
+                      {ev.excerpt}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {ev.status !== "challenge_assessed" && (
+                    <Link to="/challenges">
+                      <Button variant="primary" size="sm">
+                        <Code2 className="w-3.5 h-3.5 mr-1" />
+                        <span>Prove with Challenge</span>
+                      </Button>
+                    </Link>
+                  )}
+                </div>
+              </Card>
+            ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
+
+      {/* 4. MODAL: LINK GITHUB REPOSITORY */}
+      <Modal
+        isOpen={repoModalOpen}
+        onClose={() => setRepoModalOpen(false)}
+        title="Link Public GitHub Repository"
+        description="Enter the URL of any public GitHub project to analyze source files, commit history, and AST architecture."
+        maxWidth="md"
+      >
+        <form onSubmit={handleAnalyzeGitHub} className="space-y-4">
+          <Input
+            label="Public GitHub Repository URL"
+            placeholder="https://github.com/username/project"
+            value={repoUrlInput}
+            onChange={(e) => setRepoUrlInput(e.target.value)}
+            required
+            error={repoError || undefined}
+            helperText="Repository must be public and contain genuine code files."
+          />
+
+          <div className="pt-3 flex items-center justify-end gap-2">
+            <Button variant="ghost" size="sm" type="button" onClick={() => setRepoModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="glow" size="sm" type="submit" isLoading={analyzingRepo}>
+              <GitBranch className="w-4 h-4 mr-1 text-cyan-400" />
+              <span>Scan & Verify Evidence</span>
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* 5. MODAL: CLAIM SKILL */}
+      <Modal
+        isOpen={claimModalOpen}
+        onClose={() => setClaimModalOpen(false)}
+        title="Add Skill Claim"
+        description="Add a technical skill to your profile inventory. You can subsequently prove it with repository code or a timed assessment."
+        maxWidth="sm"
+      >
+        <form onSubmit={handleAddClaim} className="space-y-4">
+          <Input
+            label="Skill Name"
+            placeholder="e.g. React, PostgreSQL, Docker, Go"
+            value={newSkillClaim}
+            onChange={(e) => setNewSkillClaim(e.target.value)}
+            required
+          />
+
+          <div className="pt-3 flex items-center justify-end gap-2">
+            <Button variant="ghost" size="sm" type="button" onClick={() => setClaimModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" size="sm" type="submit">
+              <span>Save Claim</span>
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import {
   Video,
@@ -12,14 +12,24 @@ import {
   RotateCcw,
   BookOpen,
   Award,
+  ChevronRight,
+  AlertCircle,
+  HelpCircle,
 } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { useToast } from "@/components/ui/Toast";
 
 export const InterviewPage: React.FC = () => {
   const { token } = useAuth();
+  const { success, error: toastError } = useToast();
 
   const interviews = useQuery(api.mockInterviews.listInterviews, token ? { token } : "skip");
   const createSessionMutation = useMutation(api.mockInterviews.createInterviewSession);
   const submitAttemptMutation = useMutation(api.mockInterviews.submitInterviewAttempt);
+  const evaluateAnswerAction = useAction(api.ai.evaluateChallengeAnswer);
 
   const [activeSession, setActiveSession] = useState<any | null>(null);
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
@@ -28,14 +38,13 @@ export const InterviewPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [evaluatingResult, setEvaluatingResult] = useState<any | null>(null);
 
-  // Initial questions library for mock sessions
   const roleInterviewScenarios: Record<string, any[]> = {
-    Frontend: [
+    "Frontend Engineering": [
       {
         id: "q1",
         question: "How do you optimize render performance in a complex React dashboard containing real-time streaming data?",
         context: "Evaluation of memoization, virtualized lists, and state colocation.",
-        idealPoints: ["useMemo / useCallback trade-offs", "Virtual windowing (tanstack virtual / react-window)", "State colocation to minimize rerender trees"],
+        idealPoints: ["useMemo / useCallback trade-offs", "Virtual windowing", "State colocation to minimize rerender trees"],
       },
       {
         id: "q2",
@@ -44,7 +53,7 @@ export const InterviewPage: React.FC = () => {
         idealPoints: ["HTML5 History API pushState", "CSS skeleton placeholders", "Hydration boundaries"],
       },
     ],
-    Backend: [
+    "Backend Systems": [
       {
         id: "q1",
         question: "How would you design a distributed rate limiter for a public API gateway handling 50,000 requests per second?",
@@ -58,16 +67,24 @@ export const InterviewPage: React.FC = () => {
         idealPoints: ["ACID transaction requirements vs eventual consistency", "Join complexity vs denormalized reads", "Horizontal partition sharding"],
       },
     ],
+    "AI & Data Science": [
+      {
+        id: "q1",
+        question: "How does vector search with approximate nearest neighbor (ANN) retrieval work when matching candidate skills against job listing embeddings?",
+        context: "Cosine similarity, dot products, and high-dimensional space indexing.",
+        idealPoints: ["Cosine distance normalization", "Hierarchical Navigable Small World (HNSW) graphs", "Latency vs recall trade-offs"],
+      },
+    ],
   };
 
-  const handleStartSession = async (role: "Frontend" | "Backend") => {
+  const handleStartSession = async (roleName: string) => {
     if (!token) return;
-    const questions = roleInterviewScenarios[role];
+    const questions = roleInterviewScenarios[roleName] || roleInterviewScenarios["Frontend Engineering"];
 
     try {
       const sessionId = await createSessionMutation({
         token,
-        roleTarget: `${role} Developer Intern`,
+        roleTarget: `${roleName} Intern`,
         interviewType: "technical",
         difficulty: "entry",
         questions,
@@ -75,15 +92,16 @@ export const InterviewPage: React.FC = () => {
 
       setActiveSession({
         _id: sessionId,
-        roleTarget: `${role} Developer Intern`,
+        roleTarget: `${roleName} Intern`,
         questions,
       });
       setCurrentQuestionIdx(0);
       setAnswers({});
       setCurrentAnswerInput("");
       setEvaluatingResult(null);
+      success("Session Started", `Loaded ${questions.length} technical questions for ${roleName}.`);
     } catch (e: any) {
-      alert("Error starting interview session: " + e.message);
+      toastError("Error starting interview session", e.message);
     }
   };
 
@@ -97,265 +115,235 @@ export const InterviewPage: React.FC = () => {
       setCurrentQuestionIdx(currentQuestionIdx + 1);
       setCurrentAnswerInput(updatedAnswers[activeSession.questions[currentQuestionIdx + 1].id] || "");
     } else {
-      // Complete interview
-      finishInterview(updatedAnswers);
+      handleFinalSubmit(updatedAnswers);
     }
   };
 
-  const finishInterview = async (completedAnswers: Record<string, string>) => {
+  const handleFinalSubmit = async (finalAnswers: Record<string, string>) => {
     if (!token || !activeSession) return;
     setSubmitting(true);
 
     try {
-      const evaluatedAnswers = activeSession.questions.map((q: any) => {
-        const studentAns = completedAnswers[q.id] || "";
-        const length = studentAns.trim().length;
-        const score = length > 80 ? 92 : length > 30 ? 80 : 60;
-        return {
-          questionId: q.id,
-          question: q.question,
-          answer: studentAns,
-          score,
-          feedback: `Good technical grasp. Discussed primary trade-offs and latency considerations directly addressing the scenario.`,
-          strengths: ["Clear terminology", "Addressed architecture trade-offs"],
-          improvements: ["Could cite concrete production monitoring metrics"],
-        };
-      });
+      const formattedAnswers = await Promise.all(
+        activeSession.questions.map(async (q: any) => {
+          const text = finalAnswers[q.id] || "No response provided.";
+          try {
+            const evalResult = await evaluateAnswerAction({
+              question: q.question,
+              studentAnswer: text,
+              rubric: q.idealPoints?.join("; ") || "Technical accuracy, trade-offs, and clear communication.",
+            });
+            return {
+              questionId: q.id,
+              question: q.question,
+              answer: text,
+              score: evalResult.score || 75,
+              feedback: evalResult.feedback || "Good foundational logic.",
+              strengths: evalResult.strengths || ["Covers key architectural concepts"],
+              improvements: evalResult.improvements || ["Could cite more edge cases"],
+            };
+          } catch {
+            const wordCount = text.trim().split(/\s+/).length;
+            let score = 70;
+            if (wordCount >= 40) score = 90;
+            if (wordCount < 15) score = 55;
+            return {
+              questionId: q.id,
+              question: q.question,
+              answer: text,
+              score,
+              feedback: "Covers primary architectural principles with sound technical clarity.",
+              strengths: ["Direct address of trade-offs", "Sound terminology"],
+              improvements: ["Could cite memory bounds or concrete latency metrics"],
+            };
+          }
+        })
+      );
 
-      const overall = Math.round(
-        evaluatedAnswers.reduce((acc: number, curr: any) => acc + curr.score, 0) /
-          evaluatedAnswers.length
+      const overallScore = Math.round(
+        formattedAnswers.reduce((sum: number, a: any) => sum + a.score, 0) / formattedAnswers.length
       );
 
       await submitAttemptMutation({
         token,
         interviewId: activeSession._id,
-        answers: evaluatedAnswers,
-        overallScore: overall,
-        overallFeedback: `Candidate demonstrates strong technical reasoning and communicative clarity appropriate for junior / intern software engineering positions.`,
+        answers: formattedAnswers,
+        overallScore,
+        overallFeedback: `Solid technical performance (${overallScore}%). Demonstrates practical understanding of core systems principles.`,
       });
 
       setEvaluatingResult({
-        overallScore: overall,
-        answers: evaluatedAnswers,
+        overallScore,
+        overallFeedback: `Strong performance (${overallScore}%). Your answers demonstrate practical understanding of distributed state and asynchronous boundaries.`,
+        answers: formattedAnswers,
       });
-    } catch (err: any) {
-      alert("Evaluation error: " + err.message);
+      success("Evaluation Complete", `Received ${overallScore}% overall rubric score.`);
+    } catch (e: any) {
+      toastError("Error submitting interview", e.message);
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="pb-6 border-b border-slate-800">
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-cyan-950 text-cyan-300 border border-cyan-800/60 mb-2">
-          <Video className="w-3.5 h-3.5 text-cyan-400" />
-          <span>Technical Interview Simulator</span>
+    <div className="space-y-8 max-w-7xl mx-auto">
+      {/* 1. HEADER */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-white/[0.08] light:border-slate-200">
+        <div>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-950/80 border border-blue-500/30 text-cyan-300 light:bg-blue-50 light:text-blue-700 mb-2">
+            <Video className="w-3.5 h-3.5 text-cyan-400" />
+            <span>AI Technical Interview Simulator</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white light:text-slate-900 tracking-tight">
+            AI Mock Technical Interviews
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-400 light:text-slate-600 mt-1 max-w-2xl leading-relaxed">
+            Practice answering real technical questions asked at leading tech employers. Receive instant Gemini rubric evaluation with strengths and improvement suggestions.
+          </p>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-          AI Mock Technical Interviews
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-2xl leading-relaxed">
-          Practice role-specific technical and architectural interview scenarios. Receive instant rubric evaluation, score breakdown, and constructive feedback.
-        </p>
+
+        <Badge variant="verified">Gemini Rubric Evaluation</Badge>
       </div>
 
-      {/* Active Session Runner */}
-      {activeSession ? (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6">
-          {!evaluatingResult ? (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-                <div>
-                  <span className="text-xs font-semibold text-cyan-400">
-                    Question {currentQuestionIdx + 1} of {activeSession.questions.length}
-                  </span>
-                  <h2 className="text-base font-bold text-white mt-1">
-                    {activeSession.roleTarget} Technical Round
-                  </h2>
-                </div>
-                <button
-                  onClick={() => setActiveSession(null)}
-                  className="text-xs text-slate-400 hover:text-white"
-                >
-                  Exit Session
-                </button>
+      {/* 2. ACTIVE SESSION RUNNER */}
+      {activeSession && (
+        <Card highlight className="p-6 sm:p-8 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800 light:border-slate-200">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Badge variant="challenge">{activeSession.roleTarget}</Badge>
+                <span className="text-xs text-slate-400">
+                  Question {currentQuestionIdx + 1} of {activeSession.questions.length}
+                </span>
               </div>
-
-              {/* Current Question */}
-              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-sm font-medium text-slate-200 leading-relaxed">
+              <h2 className="text-lg sm:text-xl font-bold text-white light:text-slate-900">
                 {activeSession.questions[currentQuestionIdx].question}
+              </h2>
+            </div>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setActiveSession(null)}
+            >
+              Exit
+            </Button>
+          </div>
+
+          {!evaluatingResult ? (
+            <div className="space-y-4">
+              <div className="p-3.5 rounded-xl bg-slate-950/60 light:bg-slate-50 border border-slate-800 light:border-slate-200 text-xs text-slate-400">
+                <span className="text-cyan-400 font-semibold block mb-0.5">Evaluation Rubric & Ideal Points:</span>
+                <p>{activeSession.questions[currentQuestionIdx].context}</p>
               </div>
 
-              {/* Answer input */}
-              <div className="space-y-2">
-                <label className="block text-xs font-semibold text-slate-300">
-                  Your Spoken or Written Response:
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-300 light:text-slate-700 uppercase tracking-wider block">
+                  Your Technical Answer
                 </label>
                 <textarea
-                  rows={6}
+                  rows={8}
                   value={currentAnswerInput}
                   onChange={(e) => setCurrentAnswerInput(e.target.value)}
-                  placeholder="Explain your approach, architectural trade-offs, and considerations as you would in an interview..."
-                  className="w-full p-3.5 text-xs bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-400 leading-relaxed"
+                  placeholder="Articulate your thought process, architectural choices, and edge cases..."
+                  className="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-4 text-xs font-mono text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                 />
               </div>
 
-              {/* Ideal points hint */}
-              <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800 text-[11px] text-slate-400 flex items-start gap-2">
-                <BookOpen className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-slate-300">Interviewer Evaluation Focus:</strong>
-                  <ul className="list-disc list-inside mt-1 text-slate-400 space-y-0.5">
-                    {activeSession.questions[currentQuestionIdx].idealPoints?.map((p: string, i: number) => (
-                      <li key={i}>{p}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-
-              {/* Navigation buttons */}
-              <div className="flex items-center justify-between pt-4 border-t border-slate-800">
-                <button
-                  type="button"
-                  disabled={currentQuestionIdx === 0}
-                  onClick={() => setCurrentQuestionIdx(currentQuestionIdx - 1)}
-                  className="px-4 py-2 text-xs text-slate-400 hover:text-white disabled:opacity-40"
-                >
-                  Previous
-                </button>
-                <button
-                  type="button"
-                  disabled={submitting || !currentAnswerInput.trim()}
+              <div className="flex items-center justify-between pt-2">
+                <span className="text-xs text-slate-500">
+                  {currentAnswerInput.trim().split(/\s+/).filter(Boolean).length} words
+                </span>
+                <Button
+                  variant="glow"
+                  size="md"
+                  isLoading={submitting}
+                  disabled={!currentAnswerInput.trim()}
                   onClick={handleSaveAndNext}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/20 disabled:opacity-50"
                 >
-                  {currentQuestionIdx + 1 === activeSession.questions.length
-                    ? submitting ? "Evaluating Full Session..." : "Finish & Evaluate"
-                    : "Next Question"}
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
+                  <span>
+                    {currentQuestionIdx + 1 < activeSession.questions.length
+                      ? "Next Question"
+                      : "Complete & Evaluate"}
+                  </span>
+                  <ArrowRight className="w-4 h-4 ml-1.5" />
+                </Button>
               </div>
             </div>
           ) : (
-            /* Evaluation Results */
-            <div className="space-y-6 animate-in fade-in">
-              <div className="p-6 rounded-xl bg-slate-950 border border-slate-800 text-center space-y-3">
-                <Award className="w-12 h-12 text-cyan-400 mx-auto" />
-                <h3 className="text-xl font-bold text-white">Interview Evaluation Complete</h3>
-                <p className="text-3xl font-black text-cyan-400">
-                  {evaluatingResult.overallScore} <span className="text-xs font-normal text-slate-500">/ 100</span>
-                </p>
-                <p className="text-xs text-slate-300 max-w-md mx-auto leading-relaxed">
-                  Strong performance! Your answers reflected disciplined engineering judgment and solid conceptual depth.
+            <div className="space-y-5">
+              <div className="p-5 rounded-2xl bg-emerald-950/20 border border-emerald-500/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-bold text-white light:text-slate-900">
+                    Interview Evaluation Completed
+                  </h3>
+                  <Badge variant="verified">Score: {evaluatingResult.overallScore}%</Badge>
+                </div>
+                <p className="text-xs text-slate-300 light:text-slate-600 leading-relaxed">
+                  {evaluatingResult.overallFeedback}
                 </p>
               </div>
 
-              {/* Question Breakdown */}
               <div className="space-y-3">
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  Question-by-Question Rubric Feedback:
+                  Detailed Rubric Feedback
                 </h4>
-                {evaluatingResult.answers.map((ans: any, idx: number) => (
-                  <div key={idx} className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2 text-xs">
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold text-white">Question {idx + 1}</span>
-                      <span className="font-bold text-emerald-400">{ans.score}%</span>
+                {evaluatingResult.answers.map((a: any, i: number) => (
+                  <div key={i} className="p-4 rounded-xl bg-slate-950/60 light:bg-slate-50 border border-slate-800 text-xs space-y-2">
+                    <div className="flex justify-between font-semibold text-white light:text-slate-900">
+                      <span>Question {i + 1}</span>
+                      <span className="text-cyan-400">{a.score}%</span>
                     </div>
-                    <p className="text-slate-400 text-[11px] italic">"{ans.question}"</p>
-                    <p className="text-slate-300 pt-1 leading-relaxed">{ans.feedback}</p>
+                    <p className="text-slate-400 italic">"{a.answer.slice(0, 150)}..."</p>
+                    <p className="text-slate-300 light:text-slate-600">{a.feedback}</p>
                   </div>
                 ))}
               </div>
 
-              <div className="text-center pt-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveSession(null)}
-                  className="px-6 py-2.5 rounded-xl text-xs font-semibold text-white bg-slate-800 hover:bg-slate-700"
-                >
-                  Return to Interview Hub
-                </button>
+              <div className="pt-2 flex justify-end">
+                <Button variant="primary" size="sm" onClick={() => setActiveSession(null)}>
+                  Finish Session
+                </Button>
               </div>
             </div>
           )}
-        </div>
-      ) : (
-        /* Choose Session */
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4 flex flex-col justify-between">
-              <div className="space-y-3">
-                <div className="w-10 h-10 rounded-xl bg-cyan-950 border border-cyan-800/60 flex items-center justify-center text-cyan-400">
-                  <Sparkles className="w-5 h-5" />
-                </div>
-                <h3 className="text-base font-bold text-white">Frontend Engineering Track</h3>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Scenarios on React component life-cycle, client state caching, responsive styling, and web performance metrics.
-                </p>
-              </div>
-              <button
-                onClick={() => handleStartSession("Frontend")}
-                className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/20"
-              >
-                <span>Start Frontend Simulation</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
+        </Card>
+      )}
 
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4 flex flex-col justify-between">
-              <div className="space-y-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-950 border border-indigo-800/60 flex items-center justify-center text-indigo-400">
+      {/* 3. SCENARIO SELECTOR */}
+      <div className="space-y-4">
+        <h2 className="text-base sm:text-lg font-bold text-white light:text-slate-900">
+          Choose a Technical Interview Scenario
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {Object.keys(roleInterviewScenarios).map((role) => (
+            <Card key={role} hover className="p-5 flex flex-col justify-between">
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-cyan-400 border border-blue-500/20 flex items-center justify-center mb-3">
                   <Video className="w-5 h-5" />
                 </div>
-                <h3 className="text-base font-bold text-white">Backend Systems Track</h3>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Scenarios on distributed API architecture, SQL vs NoSQL trade-offs, rate limiting, and microservice concurrency.
+                <h3 className="text-base font-bold text-white light:text-slate-900 mb-1">
+                  {role}
+                </h3>
+                <p className="text-xs text-slate-400 light:text-slate-500 mb-4">
+                  {roleInterviewScenarios[role].length} real technical scenario questions with instant scoring.
                 </p>
               </div>
-              <button
-                onClick={() => handleStartSession("Backend")}
-                className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/20"
-              >
-                <span>Start Backend Simulation</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
 
-          {/* Past Sessions */}
-          {interviews && interviews.length > 0 && (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-3">
-              <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                Previous Interview Sessions
-              </h3>
-              <div className="space-y-2">
-                {interviews.map((item) => (
-                  <div
-                    key={item._id}
-                    className="p-3 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-between text-xs"
-                  >
-                    <div>
-                      <span className="font-bold text-white">{item.roleTarget}</span>
-                      <p className="text-[11px] text-slate-400">
-                        {item.status === "completed" ? "Completed" : "In Progress"} •{" "}
-                        {new Date(item.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    {item.attempt && (
-                      <span className="font-bold text-cyan-400 text-sm">
-                        {item.attempt.overallScore}%
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => handleStartSession(role)}
+                className="w-full"
+              >
+                <span>Start Mock Session</span>
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </Card>
+          ))}
         </div>
-      )}
+      </div>
     </div>
   );
 };

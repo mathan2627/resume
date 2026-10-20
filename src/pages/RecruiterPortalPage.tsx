@@ -14,10 +14,19 @@ import {
   Clock,
   MapPin,
   Sparkles,
+  Search,
 } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Input, Select } from "@/components/ui/Input";
+import { Modal } from "@/components/ui/Modal";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { useToast } from "@/components/ui/Toast";
 
 export const RecruiterPortalPage: React.FC = () => {
   const { token, user } = useAuth();
+  const { success, error: toastError } = useToast();
 
   const myListings = useQuery(api.recruiters.listMyListings, token ? { token } : "skip");
   const createListingMutation = useMutation(api.recruiters.createRecruiterListing);
@@ -66,368 +75,257 @@ export const RecruiterPortalPage: React.FC = () => {
         originalUrl: originalUrl.trim(),
       });
 
+      success("Listing Published", "Your opportunity has been published with verified status.");
       setPostModalOpen(false);
-      // Reset form
       setRoleTitle("");
       setDescription("");
     } catch (err: any) {
-      alert("Error creating listing: " + err.message);
+      toastError("Error creating listing", err.message);
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+    <div className="space-y-8 max-w-7xl mx-auto">
+      {/* 1. HEADER */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-white/[0.08] light:border-slate-200">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-950 text-indigo-300 border border-indigo-800/60 mb-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-950/80 border border-blue-500/30 text-cyan-300 light:bg-blue-50 light:text-blue-700 mb-2">
             <Building2 className="w-3.5 h-3.5 text-cyan-400" />
             <span>Recruiter Operations Center</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white light:text-slate-900 tracking-tight">
             Employer & Recruiter Portal
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-2xl leading-relaxed">
-            Publish verified internship listings and review consenting candidate applicants backed by real GitHub evidence and practical challenge scores.
+          <p className="text-xs sm:text-sm text-slate-400 light:text-slate-600 mt-1 max-w-2xl leading-relaxed">
+            Publish verified opportunities and review consenting candidate applicants backed by real GitHub evidence and practical challenge scores.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          <Link
-            to="/recruiter/search"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-all"
-          >
-            <Users className="w-4 h-4 text-cyan-400" />
-            <span>Search Passports</span>
+          <Link to="/recruiter/search">
+            <Button variant="outline" size="sm">
+              <Search className="w-4 h-4 mr-1 text-cyan-400" />
+              <span>Search Candidates</span>
+            </Button>
           </Link>
-          <button
-            onClick={() => setPostModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/20 transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Post New Listing</span>
-          </button>
+          <Button variant="glow" size="sm" onClick={() => setPostModalOpen(true)}>
+            <Plus className="w-4 h-4 mr-1" />
+            <span>Post Opportunity</span>
+          </Button>
         </div>
       </div>
 
-      {/* Recruiter Listings */}
+      {/* 2. MY LISTINGS GRID */}
       <div className="space-y-4">
-        <h2 className="text-base font-bold text-white flex items-center gap-2">
-          <Briefcase className="w-4 h-4 text-cyan-400" />
-          <span>Your Active Postings ({myListings?.length || 0})</span>
+        <h2 className="text-base sm:text-lg font-bold text-white light:text-slate-900">
+          Your Active Opportunity Postings ({myListings?.length || 0})
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {myListings && myListings.length > 0 ? (
-            myListings.map((listing) => (
-              <div
-                key={listing._id}
-                className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-between space-y-4 shadow-lg hover:border-slate-700 transition-all"
-              >
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
-                        {listing.companyName}
-                      </span>
-                      <h3 className="text-sm font-bold text-white">{listing.roleTitle}</h3>
-                    </div>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-800">
-                      Active
-                    </span>
+        {(!myListings || myListings.length === 0) ? (
+          <EmptyState
+            icon={<Briefcase className="w-6 h-6 text-cyan-400" />}
+            title="No Postings Yet"
+            description="Post your first internship or early-career role to discover students with verified GitHub evidence and challenge scores."
+            actionLabel="Post Opportunity"
+            onAction={() => setPostModalOpen(true)}
+          />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {myListings.map((item) => (
+              <Card key={item._id} className="p-5 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <Badge variant="verified">Active</Badge>
+                    <Badge variant="remote">{item.remoteStatus}</Badge>
                   </div>
-
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3 text-slate-500" />
-                      {listing.location} ({listing.remoteStatus})
-                    </span>
-                    {listing.stipend && (
-                      <span className="text-emerald-400 font-semibold">{listing.stipend}</span>
-                    )}
-                  </div>
-
-                  <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed">
-                    {listing.description}
+                  <h3 className="text-base font-bold text-white light:text-slate-900 mb-1">
+                    {item.roleTitle}
+                  </h3>
+                  <p className="text-xs text-slate-400 light:text-slate-500 mb-3">
+                    {item.location} • {item.stipend || "Stipend Disclosed"}
                   </p>
-
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {listing.requiredSkills.map((sk: string) => (
-                      <span
-                        key={sk}
-                        className="px-2 py-0.5 rounded text-[10px] bg-slate-950 text-slate-300 border border-slate-800"
-                      >
-                        {sk}
-                      </span>
+                  <div className="flex flex-wrap gap-1.5 mb-4">
+                    {(item.requiredSkills || []).map((s: string) => (
+                      <Badge key={s} variant="outline" size="sm">
+                        {s}
+                      </Badge>
                     ))}
                   </div>
                 </div>
 
-                <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
-                  <span className="text-slate-400 flex items-center gap-1.5 font-semibold">
-                    <Users className="w-3.5 h-3.5 text-cyan-400" />
-                    {listing.applicantCount} Applicants
+                <div className="pt-3 border-t border-slate-800/60 light:border-slate-100 flex items-center justify-between">
+                  <span className="text-[11px] text-slate-500">
+                    Deadline: {item.applicationDeadline || "Ongoing"}
                   </span>
-
-                  <button
-                    onClick={() => setSelectedListingForApplicants(listing)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 transition-colors"
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setSelectedListingForApplicants(item)}
                   >
-                    View Roster
-                  </button>
+                    <Users className="w-3.5 h-3.5 mr-1" />
+                    <span>View Applicants</span>
+                  </Button>
                 </div>
-              </div>
-            ))
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 3. MODAL: APPLICANT ROSTER */}
+      <Modal
+        isOpen={Boolean(selectedListingForApplicants)}
+        onClose={() => setSelectedListingForApplicants(null)}
+        title={`Applicants for ${selectedListingForApplicants?.roleTitle}`}
+        description="Review candidate applications with verified GitHub evidence and proof passport links."
+        maxWidth="2xl"
+      >
+        <div className="space-y-4">
+          {(!applicantRoster?.applicantCards || applicantRoster.applicantCards.length === 0) ? (
+            <p className="text-xs text-slate-400 text-center py-8">
+              No applicants have tracked this opportunity yet.
+            </p>
           ) : (
-            <div className="col-span-full text-center py-12 bg-slate-900 border border-slate-800 rounded-2xl space-y-3">
-              <Building2 className="w-10 h-10 text-slate-600 mx-auto" />
-              <h4 className="text-sm font-bold text-white">No Listings Published Yet</h4>
-              <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                Click "Post New Listing" above to publish your company's internship opportunity to students.
-              </p>
+            <div className="space-y-3">
+              {applicantRoster.applicantCards.map((app: any) => {
+                const passportUrl = app.passport?.customSlug
+                  ? `/p/${app.passport.customSlug}`
+                  : app.passport?.shareToken
+                  ? `/passport/${app.passport.shareToken}`
+                  : null;
+
+                return (
+                  <div
+                    key={app.applicationId}
+                    className="p-4 rounded-xl bg-slate-950/60 light:bg-slate-50 border border-slate-800 light:border-slate-200 flex items-center justify-between gap-4 text-xs"
+                  >
+                    <div>
+                      <h4 className="font-bold text-white light:text-slate-900">{app.student?.name || "Student Candidate"}</h4>
+                      <p className="text-slate-400 text-[11px]">{app.student?.email}</p>
+                      <span className="text-cyan-400 text-[10px] block mt-0.5">Stage: {app.status}</span>
+                    </div>
+                    {passportUrl ? (
+                      <a href={passportUrl} target="_blank" rel="noreferrer">
+                        <Button variant="outline" size="sm">
+                          <span>Proof Passport</span>
+                          <ExternalLink className="w-3 h-3 ml-1" />
+                        </Button>
+                      </a>
+                    ) : (
+                      <Badge variant="outline" size="sm">Private Passport</Badge>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
-      </div>
+      </Modal>
 
-      {/* APPLICANT ROSTER DRAWER / MODAL */}
-      {selectedListingForApplicants && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6 max-h-[85vh] overflow-y-auto">
-            <div className="flex items-start justify-between pb-3 border-b border-slate-800">
-              <div>
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
-                  Candidate Roster
-                </span>
-                <h3 className="text-base font-bold text-white">
-                  Applicants for: {selectedListingForApplicants.roleTitle}
-                </h3>
-              </div>
-              <button
-                onClick={() => setSelectedListingForApplicants(null)}
-                className="text-slate-400 hover:text-white text-xs font-bold"
-              >
-                ✕
-              </button>
-            </div>
+      {/* 4. MODAL: POST OPPORTUNITY */}
+      <Modal
+        isOpen={postModalOpen}
+        onClose={() => setPostModalOpen(false)}
+        title="Publish Verified Opportunity"
+        description="Create a vacancy listing with required skills and original application links."
+        maxWidth="lg"
+      >
+        <form onSubmit={handleCreateListing} className="space-y-4">
+          <Input
+            label="Company Name"
+            placeholder="e.g. Acme Tech"
+            value={companyName}
+            onChange={(e) => setCompanyName(e.target.value)}
+            required
+          />
 
-            <div className="space-y-3">
-              {applicantRoster?.applicantCards && applicantRoster.applicantCards.length > 0 ? (
-                applicantRoster.applicantCards.map((card: any) => (
-                  <div
-                    key={card.applicationId}
-                    className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3 text-xs"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h4 className="font-bold text-white text-sm">{card.student.name}</h4>
-                        <p className="text-slate-400 text-xs">
-                          {card.student.college} • Class of {card.student.graduationYear || 2026}
-                        </p>
-                      </div>
+          <Input
+            label="Opportunity / Role Title"
+            placeholder="e.g. Full Stack Engineering Intern"
+            value={roleTitle}
+            onChange={(e) => setRoleTitle(e.target.value)}
+            required
+          />
 
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-indigo-950 text-indigo-300 border border-indigo-800">
-                        {card.status}
-                      </span>
-                    </div>
-
-                    {/* Verified Skills badges */}
-                    <div>
-                      <span className="text-[11px] font-semibold text-slate-400 block mb-1">
-                        Verified Skills with Project/Assessment Proof:
-                      </span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {card.provenSkills.map((sk: any, idx: number) => (
-                          <span
-                            key={idx}
-                            className="px-2 py-0.5 rounded text-[10px] bg-slate-900 text-slate-200 border border-slate-800 flex items-center gap-1"
-                          >
-                            <ShieldCheck className="w-3 h-3 text-cyan-400" />
-                            <span>
-                              {sk.skillName} ({sk.score}%)
-                            </span>
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Proof Passport link */}
-                    {card.passport && (
-                      <div className="pt-2 border-t border-slate-900 flex justify-end">
-                        <Link
-                          to={`/p/${card.passport.customSlug || card.passport.shareToken}`}
-                          target="_blank"
-                          className="inline-flex items-center gap-1 text-xs font-semibold text-cyan-400 hover:text-cyan-300"
-                        >
-                          <span>Inspect Verified Proof Passport</span>
-                          <ExternalLink className="w-3 h-3" />
-                        </Link>
-                      </div>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-8 text-xs text-slate-500">
-                  No student candidates have applied for this listing yet.
-                </div>
-              )}
-            </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-300 light:text-slate-700 uppercase tracking-wider block">
+              Role Description
+            </label>
+            <textarea
+              rows={4}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Responsibilities, team context, and required stack..."
+              className="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              required
+            />
           </div>
-        </div>
-      )}
 
-      {/* POST LISTING MODAL */}
-      {postModalOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Briefcase className="w-4 h-4 text-cyan-400" />
-                <span>Post Internship Opportunity</span>
-              </h3>
-              <button
-                onClick={() => setPostModalOpen(false)}
-                className="text-slate-400 hover:text-white text-xs font-bold"
-              >
-                ✕
-              </button>
-            </div>
+          <Input
+            label="Required Skills (Comma separated)"
+            placeholder="React, TypeScript, PostgreSQL"
+            value={requiredSkillsInput}
+            onChange={(e) => setRequiredSkillsInput(e.target.value)}
+            required
+          />
 
-            <form onSubmit={handleCreateListing} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-semibold text-slate-300 mb-1">Company Name</label>
-                <input
-                  type="text"
-                  required
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  placeholder="e.g. Acme Tech Solutions"
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700/80 rounded-lg text-white"
-                />
-              </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Location"
+              placeholder="Bengaluru / Remote"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              required
+            />
 
-              <div>
-                <label className="block font-semibold text-slate-300 mb-1">Role Title</label>
-                <input
-                  type="text"
-                  required
-                  value={roleTitle}
-                  onChange={(e) => setRoleTitle(e.target.value)}
-                  placeholder="e.g. Full Stack Developer Intern"
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700/80 rounded-lg text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-300 mb-1">Role Description</label>
-                <textarea
-                  rows={3}
-                  required
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Key responsibilities and project initiatives..."
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700/80 rounded-lg text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-300 mb-1">
-                  Required Skills (Comma separated)
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={requiredSkillsInput}
-                  onChange={(e) => setRequiredSkillsInput(e.target.value)}
-                  placeholder="React, TypeScript, Node.js, SQL"
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700/80 rounded-lg text-white"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-300 mb-1">Location</label>
-                  <input
-                    type="text"
-                    required
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    placeholder="Remote / Bengaluru"
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700/80 rounded-lg text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-slate-300 mb-1">Arrangement</label>
-                  <select
-                    value={remoteStatus}
-                    onChange={(e) => setRemoteStatus(e.target.value as any)}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700/80 rounded-lg text-white"
-                  >
-                    <option value="remote">Remote</option>
-                    <option value="hybrid">Hybrid</option>
-                    <option value="onsite">Onsite</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-300 mb-1">Stipend / Comp</label>
-                  <input
-                    type="text"
-                    value={stipend}
-                    onChange={(e) => setStipend(e.target.value)}
-                    placeholder="e.g. INR 50,000 / mo"
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700/80 rounded-lg text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-slate-300 mb-1">Application Deadline</label>
-                  <input
-                    type="date"
-                    value={applicationDeadline}
-                    onChange={(e) => setApplicationDeadline(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700/80 rounded-lg text-white"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-300 mb-1">Application URL</label>
-                <input
-                  type="url"
-                  required
-                  value={originalUrl}
-                  onChange={(e) => setOriginalUrl(e.target.value)}
-                  placeholder="https://company.com/apply"
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700/80 rounded-lg text-white"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setPostModalOpen(false)}
-                  className="px-4 py-2 text-slate-400 hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-5 py-2 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50"
-                >
-                  {submitting ? "Publishing..." : "Publish Listing"}
-                </button>
-              </div>
-            </form>
+            <Select
+              label="Workplace Mode"
+              value={remoteStatus}
+              onChange={(e) => setRemoteStatus(e.target.value as any)}
+            >
+              <option value="remote">Remote</option>
+              <option value="hybrid">Hybrid</option>
+              <option value="onsite">On-site</option>
+            </Select>
           </div>
-        </div>
-      )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Stipend / Salary"
+              placeholder="e.g. INR 60,000 / month"
+              value={stipend}
+              onChange={(e) => setStipend(e.target.value)}
+            />
+
+            <Input
+              label="Application Deadline"
+              type="date"
+              value={applicationDeadline}
+              onChange={(e) => setApplicationDeadline(e.target.value)}
+            />
+          </div>
+
+          <Input
+            label="Original Application URL"
+            type="url"
+            placeholder="https://company.com/jobs/role-123"
+            value={originalUrl}
+            onChange={(e) => setOriginalUrl(e.target.value)}
+            required
+          />
+
+          <div className="pt-3 flex justify-end gap-2">
+            <Button variant="ghost" size="sm" type="button" onClick={() => setPostModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="glow" size="sm" type="submit" isLoading={submitting}>
+              <span>Publish Verified Listing</span>
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

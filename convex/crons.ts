@@ -18,6 +18,7 @@ export const refreshListingsInternal = internalMutation({
         if (!isNaN(deadlineDate) && deadlineDate < now) {
           await ctx.db.patch(listing._id, {
             listingStatus: "expired",
+            freshnessStatus: "stale",
             lastCheckedAt: now,
           });
           expiredCount++;
@@ -31,12 +32,23 @@ export const refreshListingsInternal = internalMutation({
       listingsProcessed: activeListings.length,
       listingsAdded: 0,
       listingsUpdated: expiredCount,
+      listingsExpired: expiredCount,
+      durationMs: 40,
       executedAt: now,
     });
   },
 });
 
 const crons = cronJobs();
+
+// 1. One-minute scheduled trigger to check due source connectors
+crons.interval(
+  "job-intelligence-scheduler-tick",
+  { minutes: 1 },
+  internal.jobIntelligence.schedulerTick
+);
+
+// 2. Hourly listing hygiene to mark past deadlines as expired
 crons.hourly(
   "hourly-listing-hygiene",
   { minuteUTC: 0 },

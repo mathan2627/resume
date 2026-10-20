@@ -2,42 +2,53 @@ import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { extractSkillsFromText, MASTER_TAXONOMY, normalizeSkillName } from "./lib/taxonomy";
 
-// Helper to call Google Gemini API or fall back gracefully
-async function callGeminiGenerate(prompt: string, systemInstruction?: string): Promise<string | null> {
+// Helper to call Google Gemini API with verified models and automatic resilience
+async function callGeminiGenerate(
+  prompt: string,
+  systemInstruction?: string,
+  responseMimeType: "application/json" | "text/plain" = "application/json"
+): Promise<string | null> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return null; // Signals fallback to deterministic structured heuristics
   }
 
-  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  // Verified live models: gemini-3.1-flash-lite (fast, efficient) and gemini-3.5-flash (deep reasoning)
+  const preferredModel = process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";
+  const candidateModels = [preferredModel, "gemini-3.5-flash", "gemini-3.1-flash-lite"];
+  const uniqueModels = Array.from(new Set(candidateModels));
 
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
-        generationConfig: {
-          temperature: 0.2,
-          responseMimeType: "application/json",
-        },
-      }),
-    });
+  for (const model of uniqueModels) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
-    if (!response.ok) {
-      console.warn(`Gemini API returned status ${response.status}: ${await response.text()}`);
-      return null;
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
+          generationConfig: {
+            temperature: 0.2,
+            responseMimeType: responseMimeType === "application/json" ? "application/json" : undefined,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        console.warn(`Gemini API [${model}] returned status ${response.status}: ${await response.text()}`);
+        continue; // Try next resilient fallback model
+      }
+
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) return text;
+    } catch (err) {
+      console.warn(`Error calling Gemini API [${model}]:`, err);
     }
-
-    const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    return text || null;
-  } catch (err) {
-    console.warn("Error calling Gemini API:", err);
-    return null;
   }
+
+  return null;
 }
 
 // 1. Resume Analysis with Gemini
@@ -396,39 +407,68 @@ ${conversationFormatted}
 
 Respond as the ProofPath AI Career Assistant. Be concise, transparent, actionable, and encouraging. Clearly separate verified evidence from recommendations.`;
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (apiKey) {
-      const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-      try {
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ role: "user", parts: [{ text: prompt }] }],
-            systemInstruction: {
-              parts: [{ text: "You are the ProofPath AI Career Advisor. Give grounded, transparent advice based strictly on student evidence and real requirements." }],
-            },
-          }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const reply = data.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (reply) return reply;
-        }
-      } catch (e) {
-        console.warn("Gemini career chat error:", e);
-      }
-    }
+    const reply = await callGeminiGenerate(
+      prompt,
+      "You are the ProofPath AI Career Advisor. Give grounded, transparent advice based strictly on student evidence and real requirements.",
+      "text/plain"
+    );
+    if (reply) return reply;
 
     // Fallback contextual response
     const lastUserMsg = args.messages[args.messages.length - 1]?.content.toLowerCase() || "";
     if (lastUserMsg.includes("resume") || lastUserMsg.includes("ats")) {
-      return "To maximize your resume's impact, focus on quantifiable outcomes rather than just listing technologies. For instance, rather than saying 'Built frontend in React', say 'Developed responsive dashboard in React & TypeScript, integrating REST APIs and reducing load time by 30%'. ProofPath AI also recommends pairing every resume claim with a public GitHub repo to attain 'Evidence Found' status!";
+      return "To maximize your resume's impact, focus on strong action verbs and verified outcomes rather than passive descriptions. For instance, instead of saying 'Built frontend in React', say 'Developed responsive dashboard in React & TypeScript, integrating REST APIs with optimistic UI updates [insert measured metric if tracked]'. ProofPath AI strictly enforces factual integrity: never invent unverified metrics or percentages! Pair your claims with public GitHub repos to attain 'Evidence Found' status.";
     }
     if (lastUserMsg.includes("interview") || lastUserMsg.includes("mock")) {
       return "When preparing for technical interviews, practice articulating the trade-offs behind your decisions (e.g. why you picked PostgreSQL over MongoDB, or how you avoided closure traps in React). Try our interactive Mock Interview simulator in the sidebar to test role-specific scenarios with instant rubric feedback!";
     }
     return "Great question! ProofPath AI emphasizes evidence over claims. I recommend checking your Skill Gap Analysis on the Dashboard, completing an adaptive coding challenge for any missing requirements, and updating your public Proof Passport to stand out to prospective recruiters.";
+  },
+});
+
+// 7. Bullet Point Impact Upgrader (Strict Resume Integrity)
+export const upgradeBulletPoint = action({
+  args: {
+    originalBullet: v.string(),
+    contextSkill: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const prompt = `Rewrite this resume bullet point into a high-impact, results-driven technical bullet point while strictly preserving factual integrity.
+Original: "${args.originalBullet}"
+Context/Skill: "${args.contextSkill || "Software Engineering"}"
+
+CRITICAL RESUME INTEGRITY RULES:
+1. NEVER hallucinate, invent, or assume unverified metrics, percentages, numbers, latency reductions, or concurrent user counts that were not stated in the original bullet point.
+2. Preserve all genuine facts, tools, and outcomes.
+3. Begin with a strong action verb (e.g., Architected, Engineered, Streamlined, Orchestrated, Refactored, Deployed).
+4. Emphasize technical stack, architectural patterns, and engineering discipline.
+5. If a metric or quantitative measure would strengthen the achievement but is absent in the original statement, do NOT invent a number. Insert an explicit placeholder in square brackets, such as "[insert metric, e.g. % reduction or throughput if measured]".
+
+Output strictly valid JSON in this schema:
+{
+  "improvedBullet": "string",
+  "actionVerb": "string",
+  "quantifiableMetrics": "string",
+  "reasoning": "string"
+}`;
+
+    const geminiResult = await callGeminiGenerate(
+      prompt,
+      "You are an executive technical recruiter and resume strategist dedicated to authentic, evidence-backed resumes without fabricated metrics."
+    );
+    if (geminiResult) {
+      try {
+        return JSON.parse(geminiResult);
+      } catch (e) {}
+    }
+
+    // Heuristic upgrade adhering to strict factual integrity
+    const trimmed = args.originalBullet.trim().replace(/^\W+/, "");
+    return {
+      improvedBullet: `Architected and optimized ${trimmed}, enhancing maintainability and execution reliability through modular component separation and strict type contracts [insert measured metric if tracked, e.g. % latency or throughput].`,
+      actionVerb: "Architected",
+      quantifiableMetrics: "Factually preserved with [metric] placeholder",
+      reasoning: "Replaces passive phrasing with active ownership and architectural discipline while strictly avoiding fabricated statistics.",
+    };
   },
 });

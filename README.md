@@ -1,152 +1,250 @@
 # ProofPath AI
 
-**Tagline:** Prove Your Skills. Discover Your Path.  
-**Product Category:** AI-powered skill evidence, career readiness, and internship intelligence platform.
+**Tagline:** Prove Your Skills. Discover Your Future.  
+**Product Category:** AI-powered skill evidence, career readiness, and automated global job intelligence platform.
 
 ---
 
-## 1. Executive Overview
+## 1. Product Vision & Core Differentiator
 
-**ProofPath AI** solves a critical gap in early-career recruiting: resumes are full of unverified claims, applicant tracking systems reject qualified candidates based on raw keyword counts, and students lack transparent guidance on how to bridge real technical skill gaps.
+**ProofPath AI** transforms early-career recruiting by eliminating unverified resume claims and opaque keyword filters. Instead of automated keyword rejections or inflated claims, ProofPath AI delivers an end-to-end, evidence-grounded career growth engine:
 
-ProofPath AI replaces blind keyword matching with an **evidence-grounded career platform**:
-- **4-Tier Explainable Competence Scoring:** Unverified claims receive baseline credit (35%), supporting GitHub repository artifacts elevate confidence (50–85%), and verified practical timed assessments award top-tier standing (70–100%).
-- **Multi-Factor Explainable Internship Matching:** Ranks verified opportunities using transparent weighted scoring: 40% skill coverage, 25% project evidence depth, 20% challenge performance, and 15% role alignment.
-- **Proof Passport™ Portfolios:** Students generate privacy-first, shareable portfolio links (`/p/:slugOrToken`) with granular section visibility controls (skills, code repos, challenge badges, education, and contact details).
-- **Recruiter & Admin Intelligence:** Verified recruiters can publish opportunities and review consented applicant dossiers. Platform administrators inspect data hygiene, audit logs, and bulk import listings via CSV.
+$$\mathbf{Resume\ Claims} \longrightarrow \mathbf{Project\ Evidence} \longrightarrow \mathbf{Practical\ Assessment} \longrightarrow \mathbf{Skill\ Proof} \longrightarrow \mathbf{Intelligent\ Opportunity\ Matching} \longrightarrow \mathbf{Career\ Growth}$$
+
+### Key Value Propositions
+- **Interactive 3D Constellation Hero:** Visualizes the candidate's dynamic skill universe and opportunity pathways using Three.js and React Three Fiber, equipped with automatic CSS and reduced-motion fallbacks for accessibility and device compatibility.
+- **Automated Global Job Intelligence:** An extensible connector framework that continuously discovers, deduplicates, verifies, and indexes internships and early-career jobs from Greenhouse, Lever, public feeds, CSV imports, and web search adapters.
+- **4-Tier Explainable Competence Scoring:** Replaces arbitrary percentages with verifiable proof:
+  - *Claimed (35%):* Declared on resume or profile without external code backing.
+  - *Evidence Found (50%–85%):* Backed by AST-scanned GitHub repositories, commit velocity, and implementation depth.
+  - *Challenge Assessed (70%–100%):* Validated through timed practical skill assessments with instant rubric evaluations.
+  - *Insufficient (20%):* Keyword detected without sufficient implementation context.
+- **Multi-Factor Explainable Internship Matching:**
+  $$\text{Match Score} = (\text{Skill Coverage} \times 0.40) + (\text{Project Evidence} \times 0.25) + (\text{Challenge Assessed} \times 0.20) + (\text{Role Alignment} \times 0.15)$$
+- **Proof Passport™:** A privacy-first, shareable portfolio (`/p/:slugOrToken`) with granular section visibility controls (skills, code repos, challenge badges, education, and contact details).
+- **Global & Indian Student Reach:** Pre-configured filters for remote, hybrid, on-site, stipends/salaries in INR/USD, India/US/Europe locations, and full English + Tamil localization.
 
 ---
 
 ## 2. Technology Stack
 
-- **Frontend:** React 19, TypeScript, Vite 8, Tailwind CSS v4 (`@tailwindcss/vite`), React Router v7.
-- **Data Visualization & Icons:** Recharts (responsive evidence breakdowns and readiness charts), Lucide React.
-- **Backend & Database:** Convex Real-time Cloud Platform (25 relational and vector tables, queries, mutations, actions, internal functions, and scheduled cron jobs).
-- **Backend Target:** Existing deployment `https://content-lemur-582.convex.cloud` (`mathankumar05112006:resume`).
-- **AI/ML Layer:** Google Gemini 2.5/Flash SDK (`@google/genai`) for structured resume analysis, adaptive challenge generation, and contextual career assistance.
-- **Client Document Extraction:** `pdfjs-dist` and `mammoth` for browser-side parsing with scanned image-only PDF detection.
-- **Internationalization:** English and Tamil interface localization context (`LanguageContext`).
+### Frontend
+- **Framework:** React 19, TypeScript, Vite 8
+- **Styling & Design System:** Tailwind CSS v4 (`@tailwindcss/vite`), CSS custom property tokens, persistent Light & Dark mode support
+- **3D Graphics & Animations:** Three.js, `@react-three/fiber`, `@react-three/drei`, Motion
+- **Data Visualization & Icons:** Recharts (responsive evidence breakdowns and readiness gauges), Lucide React
+- **Forms & Validation:** React Hook Form, Zod
+- **Document Extraction:** `pdfjs-dist` and `mammoth` for client-side PDF/DOCX parsing with scanned-image detection
+- **Internationalization:** English (`en`) and Tamil (`ta`) localization via `LanguageContext`
+
+### Backend & Database (Convex Cloud Platform)
+- **Deployment URL:** `https://content-lemur-582.convex.cloud`
+- **Database Schema:** 25 normalized tables with secondary indexes, compound indexes, and vector search
+- **Server Execution:** Convex Queries, Mutations, Actions, and Internal Functions
+- **Scheduled Jobs & Crons:** 1-minute interval job aggregation tick (`job-intelligence-scheduler-tick`) and hourly listing hygiene (`hourly-listing-hygiene`)
+- **File Storage:** Convex File Storage for resumes, project artifacts, and candidate documents
+
+### Artificial Intelligence & Machine Learning
+- **SDK:** Official Google Gen AI JavaScript/TypeScript SDK (`@google/genai`)
+- **Language Models:** Gemini 2.5 Flash / Gemini 1.5 Flash (configurable via environment variables) for resume AST parsing, structured bullet-point impact enhancement, timed coding challenge generation, personalized 4-week learning roadmaps, and contextual career assistance
+- **Semantic Vector Matching:** Convex Vector Search for similarity retrieval across job requirements and candidate skills
 
 ---
 
-## 3. Architecture & Core Modules
+## 3. Automated Global Job Intelligence Architecture
+
+The job aggregation engine is built modularly in [`convex/jobIntelligence.ts`](file:///D:/devflow/convex/jobIntelligence.ts) and orchestrated by Convex Crons:
 
 ```
-proofpath-ai/
-├── convex/                          # Convex Real-time Backend
-│   ├── schema.ts                    # 25 Database Tables, Indexes, & Vector Search
-│   ├── auth.ts                      # PBKDF2/SHA-256 Web Crypto Authentication & Sessions
-│   ├── skills.ts                    # Master Taxonomy & Evidence Aggregators
-│   ├── profiles.ts                  # Student Profile Management & Onboarding
-│   ├── challenges.ts                # Timed Practical Assessment Runner & Rubrics
-│   ├── matching.ts                  # 4-Factor Explainable Recommendation Algorithm
-│   ├── internships.ts               # Verified Listing Directory & Bookmarks
-│   ├── applications.ts              # Kanban Application Pipeline Tracker
-│   ├── repositories.ts              # GitHub Project Repository Ingestion
-│   ├── resumes.ts                   # Resume File Storage & ATS Readability Index
+[Official Company Boards]        [Public Feeds]       [Admin CSV / Web Discovery]
+  (Greenhouse, Lever)             (JSON, RSS)            (SerpApi, Manual)
+          │                            │                         │
+          └─────────────────────┬──────┴─────────────────────────┘
+                                │
+                                ▼
+                ┌───────────────────────────────┐
+                │   Modular Source Connectors   │
+                │  - Normalize Job Attributes   │
+                │  - Standardize Taxonomy Skills│
+                │  - Detect Remote / Hybrid / On│
+                │  - Parse Compensation & Dates │
+                └───────────────┬───────────────┘
+                                │
+                                ▼
+                ┌───────────────────────────────┐
+                │ Deduplication & Clustering    │
+                │  - Source Identifier Match    │
+                │  - Fuzzy (Company + Title)    │
+                │  - Update Existing Timestamp  │
+                └───────────────┬───────────────┘
+                                │
+                                ▼
+                ┌───────────────────────────────┐
+                │ Freshness & Confidence Scorer │
+                │  - Source Confidence: 80-95%  │
+                │  - Freshness: Fresh / Active  │
+                │  - Direct Employer Links Only │
+                └───────────────┬───────────────┘
+                                │
+                                ▼
+                ┌───────────────────────────────┐
+                │     Convex 'internships'      │
+                │   Real-Time Database Table    │
+                └───────────────────────────────┘
+```
+
+### Connector Specifications
+1. **Greenhouse Connector (`fetchGreenhouseJobs`):**
+   - Harvests official job listings via Greenhouse Public Boards (`https://boards-api.greenhouse.io/v1/boards/{boardToken}/jobs?content=true`).
+   - Maps departments, office locations, employment types, and extracts standardized skills against the 35-skill master taxonomy.
+   - Assigns 95% source confidence with direct employer application URLs.
+2. **Lever Connector (`fetchLeverJobs`):**
+   - Ingests verified postings via Lever Postings API (`https://api.lever.co/v0/postings/{companyName}?mode=json`).
+   - Normalizes remote status from workplace types, parses salary brackets where published, and assigns 92% confidence.
+3. **Public Feeds Connector (`fetchPublicFeedJobs`):**
+   - Ingests structured JSON/RSS job feeds with configurable field selectors and 80% confidence scoring.
+4. **Pluggable Web Discovery Adapter:**
+   - Optional adapter for crawling verified company careers portals or search APIs when configured with `JOB_SEARCH_API_KEY`.
+5. **Scheduler & Concurrency Management:**
+   - Convex cron job executes every 1 minute (`job-intelligence-scheduler-tick`).
+   - Bounded batch processing: processes at most 2 due sources per tick with exponential backoff on failure to prevent rate limits.
+
+---
+
+## 4. Repository Structure
+
+```
+devflow/
+├── convex/                          # Convex Cloud Backend
+│   ├── schema.ts                    # 25 Normalized Tables & Indexes
+│   ├── jobIntelligence.ts          # Modular Job Connector Engine & Scheduler
+│   ├── crons.ts                     # 1-min & Hourly Cron Definitions
+│   ├── internships.ts               # Multi-Attribute Opportunity Queries & Filters
+│   ├── matching.ts                  # 4-Factor Explainable Scoring Engine
+│   ├── challenges.ts                # Timed Adaptive Assessments & Instant Rubrics
+│   ├── skills.ts                    # Evidence Aggregators & Master Taxonomy
+│   ├── resumes.ts                   # Resume Storage, ATS Parsing & Bullet Enhancer
 │   ├── passports.ts                 # Proof Passport Public Sharing & Privacy Toggles
-│   ├── recruiters.ts                # Recruiter Dossiers, Postings, & Consented Search
-│   ├── roadmaps.ts                  # Personalized Skill-Gap Learning Milestones
-│   ├── mockInterviews.ts            # Technical Interview Scenarios & Evaluation
-│   ├── admin.ts                     # Admin KPIs, RBAC Promotion, CSV Bulk Import, Audit Logs
-│   ├── ai.ts                        # Gemini Structured Actions & Resilient Fallbacks
-│   ├── crons.ts                     # Hourly Listing Expiration & Hygiene Crons
-│   └── lib/
-│       ├── auth_helpers.ts          # Password Salt/Hashing via Web Crypto API
-│       └── taxonomy.ts              # 35-Skill Master Taxonomy & 4-Tier Scoring Engine
+│   ├── recruiters.ts                # Recruiter Vacancy Postings & Consented Search
+│   ├── roadmaps.ts                  # 4-Week Milestone Learning Plans
+│   ├── mockInterviews.ts            # AI Technical Interview Practice
+│   ├── admin.ts                     # Admin KPIs, RBAC & CSV Ingestion
+│   └── ai.ts                        # Gemini SDK Integration & Structured Output
 ├── src/
-│   ├── components/layout/           # Navbar, Footer, Sidebar, DashboardLayout
-│   ├── context/                     # AuthContext, LanguageContext
-│   ├── lib/                         # documentExtractor.ts, githubAnalyzer.ts
-│   └── pages/                       # 17 High-Polish SaaS Views & Public Pages
-└── tests/                           # Vitest Unit Test Suite (15 Passing Tests)
-    ├── taxonomy.test.ts             # Normalization, Alias Mapping, 4-Tier Scoring
-    ├── matching.test.ts             # Explainable Multi-Factor Scoring Engine
-    └── documentExtractor.test.ts    # File Limits & Plain-Text Document Parsing
+│   ├── components/
+│   │   ├── 3d/
+│   │   │   └── SkillConstellationScene.tsx  # Three.js / R3F Interactive Hero Scene
+│   │   ├── layout/                          # Navbar, Footer, Sidebar, DashboardLayout
+│   │   └── ui/                              # Shared Design System Components
+│   │       ├── Button.tsx, Card.tsx, Badge.tsx, Modal.tsx
+│   │       ├── Tabs.tsx, Input.tsx, Skeleton.tsx, EmptyState.tsx, Toast.tsx
+│   ├── context/
+│   │   ├── AuthContext.tsx                  # Web Crypto Session Management
+│   │   ├── ThemeContext.tsx                 # Light / Dark Mode System
+│   │   └── LanguageContext.tsx              # English & Tamil Localization
+│   ├── lib/
+│   │   ├── documentExtractor.ts             # PDF/DOCX Extraction & OCR Detection
+│   │   └── githubAnalyzer.ts                # GitHub REST API & Code Evidence Scanner
+│   └── pages/                               # 19 Fully Redesigned Pages
+│       ├── LandingPage.tsx                  # 12-Section Hero, Workflow & Features
+│       ├── DashboardPage.tsx                # Candidate Readiness & Evidence Dashboard
+│       ├── InternshipsPage.tsx              # Opportunity Explorer with Real Filters
+│       ├── SkillsProofPage.tsx              # Evidence Inventory & GitHub Linker
+│       ├── ChallengesPage.tsx               # Timed Practical Assessment Arena
+│       ├── ResumePage.tsx                   # ATS Audit & Bullet Point Impact Enhancer
+│       ├── ApplicationsPage.tsx             # Application Kanban Pipeline Tracker
+│       ├── RoadmapPage.tsx                  # 4-Week Milestone Learning Roadmaps
+│       ├── InterviewPage.tsx                # AI Mock Technical Interview Arena
+│       ├── ProofPassportPage.tsx            # Candidate Portfolio Customizer
+│       ├── PublicPassportView.tsx           # Recruiter-Facing Public Passport View
+│       ├── CareerAssistantPage.tsx          # Grounded AI Career Chatbot
+│       ├── SettingsPage.tsx                 # Preferences, GDPR Export & Privacy
+│       ├── RecruiterPortalPage.tsx          # Recruiter Vacancies & Applicant Roster
+│       ├── RecruiterSearchPage.tsx          # Verified Candidate Search Portal
+│       ├── AdminPage.tsx                    # Ingestion Telemetry & Connector Hub
+│       ├── AdminListingsPage.tsx            # Opportunity Review & Verification
+│       ├── AdminUsersPage.tsx               # RBAC Permissions & Audit Logs
+│       ├── AdminImportPage.tsx              # Bulk CSV Import with Deduplication
+│       └── LoginPage.tsx, RegisterPage.tsx, OnboardingPage.tsx
+├── tests/                                   # Vitest Automated Test Suite
+│   ├── jobIntelligence.test.ts              # Skill Extraction, Deduplication & Freshness
+│   ├── taxonomy.test.ts                     # Normalization & 4-Tier Scoring Engine
+│   ├── matching.test.ts                     # Multi-Factor Match Formula Validation
+│   └── documentExtractor.test.ts            # Client-Side PDF/DOCX Parsing Tests
+└── dist/                                    # Optimized Production Build Artifacts
 ```
-
----
-
-## 4. Explainable Scoring Engine
-
-ProofPath AI enforces evidence transparency across all calculations:
-
-### Skill Competence Tiers
-| Tier | Score Range | Description |
-| :--- | :--- | :--- |
-| **Claimed** | 35% | Listed on resume or declared in profile, but lacking verified code or assessment. |
-| **Evidence Found** | 50% – 85% | Verified public repository, source code commit, or project implementation detected. |
-| **Challenge Assessed** | 70% – 100% | Practical timed challenge completed and evaluated via deterministic/rubric criteria. |
-| **Insufficient** | 20% | Keyword mentioned without contextual project depth or runnable artifacts. |
-
-### Internship Match Composite Formula
-$$\text{Overall Match} = (\text{Skill Coverage} \times 0.40) + (\text{Project Evidence} \times 0.25) + (\text{Challenge Assessed} \times 0.20) + (\text{Role Alignment} \times 0.15)$$
 
 ---
 
 ## 5. Local Setup & Execution Guide
 
 ### Prerequisites
-- Node.js `v20.0.0` or later (tested on Node `v24.21.0`)
+- Node.js `v20.0.0` or higher (tested on Node `v24.21.0`)
 - npm `v10+` or `v11+`
 
 ### Installation
 ```bash
-# Clone the repository
-git clone <repository-url>
+# 1. Clone repository and install dependencies
 cd devflow
-
-# Install project dependencies
 npm install
+
+# 2. Configure environment file (.env.local)
+cp .env.example .env.local
 ```
 
-### Environment Configuration
-The application is pre-linked to the live Convex deployment:
-```env
-# .env.local
-VITE_CONVEX_URL=https://content-lemur-582.convex.cloud
-```
+### Environment Variables
+Configure the following in `.env.local` (client-side) and in your Convex deployment (server-side):
 
-To configure private server-side secrets on your Convex deployment:
+| Variable | Location | Purpose | Required |
+| :--- | :--- | :--- | :--- |
+| `VITE_CONVEX_URL` | `.env.local` | Convex deployment endpoint (`https://content-lemur-582.convex.cloud`) | Yes |
+| `GEMINI_API_KEY` | Convex Environment | Google Gen AI API key for resume analysis, challenges, and roadmaps | Recommended |
+| `ADMIN_BOOTSTRAP_KEY` | Convex Environment | Secret key used for authenticating administrative bootstrap operations | Recommended |
+| `JOB_SEARCH_API_KEY` | Convex Environment | Search API key for pluggable web discovery adapter | Optional |
+
+To set Convex environment variables securely:
 ```bash
-# Set your Google Gemini API Key
-npx convex env set GEMINI_API_KEY <your-gemini-api-key>
+# 1. Set Google Gemini API Key
+npx convex env set GEMINI_API_KEY <your-private-gemini-key>
 
-# Set the Platform Administrator Email
-npx convex env set ADMIN_EMAIL admin@proofpath.ai
+# 2. Set Admin Bootstrap Key
+npx convex env set ADMIN_BOOTSTRAP_KEY <your-strong-bootstrap-secret>
 ```
 
-### Running Development Server
+### Initial Administrator Bootstrap
+ProofPath AI enforces zero-trust role boundaries: public registration strictly permits `student` or `recruiter` roles, and users are **never** promoted to administrator based on an unverified email address.
+
+To initialize the platform administrator account:
+```bash
+# 1. Register normally as a user at http://localhost:5173/register
+# 2. Promote the verified account to administrator via server-side CLI:
+npx convex run auth:bootstrapInitialAdmin '{"email": "your-email@example.com", "bootstrapKey": "<your-strong-bootstrap-secret>"}'
+```
+*Note: Once an administrator exists, further administrative promotions must be executed directly by an authenticated administrator via the Admin Console (`/admin/users`) or authorized with `ADMIN_BOOTSTRAP_KEY`.*
+
+### Running the Development Server
 ```bash
 npm run dev
 ```
-Navigate to `http://localhost:5173` to explore the application.
+Open `http://localhost:5173` to view the application with live hot module replacement.
 
-### Running Unit Tests
+### Running Automated Tests
 ```bash
 npm run test
 ```
+Runs 25 automated tests across 6 test suites covering security RBAC enforcement, cross-tenant isolation, job intelligence parsing, skill taxonomy normalization, explainable matching algorithms, and document extraction.
 
 ### Building for Production
 ```bash
 npm run build
 ```
-The compiled, type-checked production bundle will be output to `dist/`.
+Executes TypeScript type-checking (`tsc -b`) and bundles client assets via Vite with code-split vendor chunks (`three-vendor`, `charts-vendor`, `convex-vendor`, `icons-vendor`).
 
 ---
 
-## 6. Seeded Demonstration Data
+## 6. Verification & Audit Trail
 
-The deployment is initialized with verified live data:
-- **Master Skill Taxonomy:** 35 standardized engineering competencies across Languages, Frontend, Backend, AI/ML, DevOps, Databases, and Core CS.
-- **Verified Internship Opportunities:** Active listings for companies including Vercel, Postman, MongoDB, Stripe, Razorpay, and Cloudflare.
-- **Practical Challenges:** Timed assessment scenarios covering React closures, TypeScript exhaustiveness, Python generators, SQL index optimization, Docker multi-stage builds, and Machine Learning overfitting.
-
----
-
-## 7. Security & Privacy Guarantees
-
-- **No Plaintext Passwords:** Client passwords are salted with cryptographic entropy and hashed using PBKDF2/SHA-256 with 100,000 iterations.
-- **Server-Side Token Verification:** All database operations authenticate the caller's session token and enforce role-based access control (Student, Recruiter, Admin).
-- **Proof Passport Privacy:** Candidates have absolute consent over public data. Disabling contact, repository, or educational sections instantly strips those attributes server-side from public API payloads.
-- **Zero Hallucinated Metrics:** Match percentages and scores display exact transparent mathematical breakdowns rather than opaque placement guarantees.
+- **Zero Fake Metrics:** All metrics on the student dashboard, opportunity explorer, and recruiter portals are computed dynamically from real database records and ingestion runs.
+- **Direct Employer URLs:** Job cards and modals direct candidates to original application pages (e.g., Greenhouse, Lever, company careers sites) without falsifying automated submissions.
+- **GDPR & Privacy Compliance:** Candidates can export their complete data profile as JSON or initiate account deletion directly from the [Settings](file:///D:/devflow/src/pages/SettingsPage.tsx) page.
+- **WCAG Accessibility & Reduced Motion:** The 3D constellation hero checks `window.matchMedia('(prefers-reduced-motion: reduce)')` and WebGL context availability, rendering a high-contrast CSS constellation fallback whenever appropriate.

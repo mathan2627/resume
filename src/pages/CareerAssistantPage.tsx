@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useQuery, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -11,7 +11,11 @@ import {
   Briefcase,
   Code2,
   HelpCircle,
+  Loader2,
 } from "lucide-react";
+import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 
 export const CareerAssistantPage: React.FC = () => {
   const { token, user } = useAuth();
@@ -28,6 +32,7 @@ export const CareerAssistantPage: React.FC = () => {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const quickPrompts = [
     "How can I turn my resume claims into verified GitHub evidence?",
@@ -35,6 +40,10 @@ export const CareerAssistantPage: React.FC = () => {
     "How do I prepare for technical interviews on React hook closures?",
     "Review my project bullet points for ATS impact.",
   ];
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
 
   const handleSend = async (messageText?: string) => {
     const textToSend = messageText || input;
@@ -68,65 +77,73 @@ export const CareerAssistantPage: React.FC = () => {
   };
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col space-y-4">
+    <div className="h-[calc(100vh-8.5rem)] flex flex-col space-y-4 max-w-5xl mx-auto">
       {/* Top Banner */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-800 shrink-0">
+      <div className="flex items-center justify-between pb-3 border-b border-white/[0.08] light:border-slate-200 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-cyan-950 border border-cyan-800/80 flex items-center justify-center text-cyan-400">
+          <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-cyan-400">
             <Bot className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-base font-bold text-white flex items-center gap-2">
+            <h1 className="text-base font-bold text-white light:text-slate-900 flex items-center gap-2">
               <span>ProofPath AI Career Assistant</span>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800/60">
-                Ground Truth Context
-              </span>
+              <Badge variant="verified" size="sm">Grounded Context</Badge>
             </h1>
-            <p className="text-xs text-slate-400">
-              Context-aware career advice grounded in your actual Skill Proof evidence.
+            <p className="text-xs text-slate-400 light:text-slate-500">
+              Personalized career guidance grounded in your actual Skill Proof evidence and target opportunities.
             </p>
           </div>
+        </div>
+
+        <div className="hidden sm:block">
+          <Badge variant="outline" size="sm">
+            Target: {profileData?.profile?.preferredRole || "Software Engineering"}
+          </Badge>
         </div>
       </div>
 
       {/* Suggested Quick Prompts */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 shrink-0">
-        <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">Suggested:</span>
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 shrink-0 no-scrollbar">
+        <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+          Quick Prompts:
+        </span>
         {quickPrompts.map((p, idx) => (
           <button
             key={idx}
             onClick={() => handleSend(p)}
-            className="px-3 py-1.5 rounded-lg text-xs bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 whitespace-nowrap transition-colors"
+            className="px-3 py-1.5 rounded-xl text-xs bg-slate-900/90 hover:bg-slate-800 text-slate-300 light:bg-white light:text-slate-700 light:border-slate-200 border border-slate-800/80 whitespace-nowrap transition-colors cursor-pointer"
           >
             {p}
           </button>
         ))}
       </div>
 
-      {/* Messages Scroll Area */}
-      <div className="flex-1 bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 overflow-y-auto space-y-4 shadow-xl">
+      {/* Chat Messages Log */}
+      <div className="flex-1 overflow-y-auto space-y-4 p-4 rounded-2xl bg-slate-950/40 light:bg-slate-50 border border-white/[0.08] light:border-slate-200 shadow-inner">
         {messages.map((m, idx) => {
-          const isUser = m.role === "user";
+          const isAssistant = m.role === "assistant";
           return (
             <div
               key={idx}
-              className={`flex items-start gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}
+              className={`flex items-start gap-3 ${
+                isAssistant ? "" : "flex-row-reverse"
+              }`}
             >
               <div
-                className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold ${
-                  isUser
-                    ? "bg-indigo-600 text-white"
-                    : "bg-cyan-950 border border-cyan-800 text-cyan-400"
+                className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold ${
+                  isAssistant
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "bg-slate-800 light:bg-slate-200 text-slate-300 light:text-slate-700"
                 }`}
               >
-                {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                {isAssistant ? <Bot className="w-4 h-4" /> : <User className="w-4 h-4" />}
               </div>
 
               <div
-                className={`p-4 rounded-2xl text-xs sm:text-sm leading-relaxed max-w-xl ${
-                  isUser
-                    ? "bg-indigo-600 text-white rounded-tr-none shadow-md"
-                    : "bg-slate-950 border border-slate-800 text-slate-200 rounded-tl-none whitespace-pre-wrap"
+                className={`max-w-2xl rounded-2xl p-4 text-xs sm:text-sm leading-relaxed ${
+                  isAssistant
+                    ? "bg-slate-900/95 light:bg-white border border-slate-800 light:border-slate-200 text-slate-200 light:text-slate-800 shadow-sm whitespace-pre-wrap"
+                    : "bg-blue-600 text-white shadow-md shadow-blue-500/20"
                 }`}
               >
                 {m.content}
@@ -136,19 +153,21 @@ export const CareerAssistantPage: React.FC = () => {
         })}
 
         {loading && (
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-cyan-950 border border-cyan-800 text-cyan-400 flex items-center justify-center text-xs shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0">
               <Bot className="w-4 h-4" />
             </div>
-            <div className="p-3.5 rounded-2xl rounded-tl-none bg-slate-950 border border-slate-800 text-xs text-slate-400 flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-              <span>Analyzing profile context and generating response...</span>
+            <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 text-xs text-slate-400 flex items-center gap-2">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400" />
+              <span>Analyzing evidence and formulating advice...</span>
             </div>
           </div>
         )}
+
+        <div ref={messagesEndRef} />
       </div>
 
-      {/* Message Input Form */}
+      {/* Input Form Bar */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -160,17 +179,17 @@ export const CareerAssistantPage: React.FC = () => {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask anything about your resume, skill proof, or internship matches..."
-          className="flex-1 px-4 py-3 text-xs sm:text-sm bg-slate-900 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+          placeholder="Ask anything about your resume, missing skills, or technical interview prep..."
+          className="flex-1 bg-slate-900/90 light:bg-white border border-slate-800 light:border-slate-200 rounded-xl px-4 py-3 text-xs sm:text-sm text-slate-100 light:text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
         />
-        <button
+        <Button
+          variant="glow"
+          size="md"
           type="submit"
-          disabled={loading || !input.trim()}
-          className="inline-flex items-center justify-center p-3 sm:px-5 sm:py-3 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 shadow-md shadow-indigo-600/20 transition-all"
+          disabled={!input.trim() || loading}
         >
           <Send className="w-4 h-4" />
-          <span className="hidden sm:inline ml-2">Send</span>
-        </button>
+        </Button>
       </form>
     </div>
   );

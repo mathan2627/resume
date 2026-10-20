@@ -32,17 +32,14 @@ export async function requireUser(
 }
 
 // Helper function to check if user has admin privileges
+// Strict role check: Never promote or trust user based only on unverified email strings
 export async function requireAdmin(
   ctx: { db: any },
   token: string
 ): Promise<{ user: Doc<"users">; session: Doc<"sessions"> }> {
   const { user, session } = await requireUser(ctx, token);
-  const adminEmail = process.env.ADMIN_EMAIL;
 
-  const isAdminRole = user.role === "admin";
-  const isConfiguredAdmin = adminEmail && user.email.toLowerCase() === adminEmail.toLowerCase();
-
-  if (!isAdminRole && !isConfiguredAdmin) {
+  if (user.role !== "admin") {
     throw new Error("Administrative authorization required for this action");
   }
 
@@ -55,7 +52,7 @@ export const register = mutation({
     name: v.string(),
     email: v.string(),
     password: v.string(),
-    role: v.union(v.literal("student"), v.literal("recruiter"), v.literal("admin")),
+    role: v.union(v.literal("student"), v.literal("recruiter")),
   },
   handler: async (ctx, args) => {
     const emailNormalized = args.email.trim().toLowerCase();
@@ -74,12 +71,9 @@ export const register = mutation({
       throw new Error("Password must be at least 8 characters long.");
     }
 
-    // Check if registering user is configured admin email
-    const adminEmail = process.env.ADMIN_EMAIL;
-    let assignedRole = args.role;
-    if (adminEmail && emailNormalized === adminEmail.toLowerCase()) {
-      assignedRole = "admin";
-    }
+    // Role boundary: Public registration strictly permits "student" or "recruiter" ONLY.
+    // Admin role cannot be self-assigned or inferred from email.
+    const assignedRole: "student" | "recruiter" = args.role === "recruiter" ? "recruiter" : "student";
 
     const passwordHash = await hashPassword(args.password);
     const now = Date.now();
@@ -269,6 +263,68 @@ export const getCurrentUser = query({
       email: user.email,
       role: user.role,
       profile,
+    };
+  },
+});
+
+// Secure server-side initial admin bootstrap
+export const bootstrapInitialAdmin = mutation({
+  args: {
+    email: v.string(),
+    bootstrapKey: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const emailNormalized = args.email.trim().toLowerCase();
+    const serverKey = process.env.ADMIN_BOOTSTRAP_KEY;
+
+    // Check if any admin exists in the database
+    const allUsers = await ctx.db.query("users").collect();
+    const existingAdmins = allUsers.filter((u) => u.role === "admin");
+
+    if (existingAdmins.length > 0) {
+      // Once at least one administrator exists, bootstrapping is permanently locked
+      // unless authorized by the secret server-side ADMIN_BOOTSTRAP_KEY
+      if (!serverKey || args.bootstrapKey !== serverKey) {
+        throw new Error("Admin bootstrapping is locked. New administrators must be promoted by an existing administrator.");
+      }
+    } else {
+      // First-time bootstrap when 0 admins exist in the deployment:
+      if (serverKey && args.bootstrapKey !== serverKey) {
+        throw new Error("Invalid administrative bootstrap key.");
+      }
+      if (!serverKey && args.bootstrapKey.length < 12) {
+        throw new Error("Initial bootstrap key must be at least 12 characters long for security.");
+      }
+    }
+
+    const targetUser = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", emailNormalized))
+      .first();
+
+    if (!targetUser) {
+      throw new Error(`Target account (${emailNormalized}) must register first before being promoted to administrator.`);
+    }
+
+    const now = Date.now();
+    await ctx.db.patch(targetUser._id, {
+      role: "admin",
+      updatedAt: now,
+    });
+
+    await ctx.db.insert("auditLogs", {
+      userId: targetUser._id,
+      action: "ADMIN_BOOTSTRAP",
+      resourceType: "users",
+      resourceId: targetUser._id,
+      details: `User ${targetUser.email} promoted to admin via verified server bootstrap.`,
+      timestamp: now,
+    });
+
+    return {
+      success: true,
+      message: `User ${targetUser.email} successfully verified and promoted to administrator.`,
+      userId: targetUser._id,
     };
   },
 });

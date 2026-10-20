@@ -11,7 +11,13 @@ import {
   GraduationCap,
   Sparkles,
   ArrowRight,
+  Code2,
 } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export const RecruiterSearchPage: React.FC = () => {
   const { token } = useAuth();
@@ -23,115 +29,102 @@ export const RecruiterSearchPage: React.FC = () => {
   );
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="pb-6 border-b border-slate-800">
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-950 text-indigo-300 border border-indigo-800/60 mb-2">
-          <Users className="w-3.5 h-3.5 text-cyan-400" />
-          <span>Talent Discovery</span>
+    <div className="space-y-8 max-w-7xl mx-auto">
+      {/* 1. HEADER */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-white/[0.08] light:border-slate-200">
+        <div>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-950/80 border border-blue-500/30 text-cyan-300 light:bg-blue-50 light:text-blue-700 mb-2">
+            <Users className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Talent Discovery</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white light:text-slate-900 tracking-tight">
+            Consented Candidate Proof Search
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-400 light:text-slate-600 mt-1 max-w-2xl leading-relaxed">
+            Discover student portfolios who have voluntarily opted-in to public Proof Passport sharing. Every candidate features concrete verified project and assessment proof.
+          </p>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-          Consented Candidate Proof Search
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-2xl leading-relaxed">
-          Filter through student portfolios who have voluntarily opted-in to public Proof Passport sharing. Every candidate displays concrete verified project or assessment proof.
-        </p>
+
+        <Link to="/recruiter">
+          <Button variant="outline" size="sm">
+            <span>Back to Portal</span>
+          </Button>
+        </Link>
       </div>
 
-      {/* Filter Bar */}
-      <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-lg flex items-center gap-3">
-        <Search className="w-4 h-4 text-slate-500" />
-        <input
-          type="text"
+      {/* 2. SEARCH BAR */}
+      <div className="max-w-md">
+        <Input
+          placeholder="Filter by technical skill (e.g. React, Python, Docker)..."
           value={skillFilter}
           onChange={(e) => setSkillFilter(e.target.value)}
-          placeholder="Filter by technical skill (e.g. React, TypeScript, Python, Docker)..."
-          className="flex-1 bg-transparent border-0 text-xs text-white placeholder-slate-500 focus:outline-none"
+          leftIcon={<Search className="w-4 h-4 text-slate-400" />}
         />
-        {skillFilter && (
-          <button
-            onClick={() => setSkillFilter("")}
-            className="text-xs text-slate-400 hover:text-white"
-          >
-            Clear
-          </button>
-        )}
       </div>
 
-      {/* Results Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {searchResults && searchResults.length > 0 ? (
-          searchResults.map((cand, idx) => (
-            <div
-              key={idx}
-              className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-between space-y-4 shadow-lg hover:border-slate-700 transition-all"
-            >
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-cyan-400 flex items-center justify-center font-bold text-white text-sm">
+      {/* 3. CANDIDATE RESULTS GRID */}
+      {(!searchResults || searchResults.length === 0) ? (
+        <EmptyState
+          icon={<Users className="w-7 h-7 text-cyan-400" />}
+          title="No Candidates Found"
+          description="Try searching for a different technical skill or clear the filter to view all consented public candidate passports."
+          actionLabel="Clear Filter"
+          onAction={() => setSkillFilter("")}
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {searchResults.map((cand, idx) => (
+            <Card key={idx} hover className="p-5 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center font-bold text-white text-sm shrink-0 shadow-sm">
                     {cand.name.charAt(0)}
                   </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-white">{cand.name}</h3>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-bold text-white light:text-slate-900 truncate">{cand.name}</h3>
                     {cand.preferredRole && (
-                      <p className="text-xs text-cyan-400 font-semibold">{cand.preferredRole}</p>
+                      <p className="text-xs text-cyan-400 light:text-blue-600 font-semibold truncate">{cand.preferredRole}</p>
                     )}
                   </div>
                 </div>
 
                 {cand.college && (
-                  <p className="text-xs text-slate-400 flex items-center gap-1.5">
+                  <p className="text-xs text-slate-400 flex items-center gap-1.5 mb-3">
                     <GraduationCap className="w-3.5 h-3.5 text-slate-500" />
-                    {cand.college}
+                    <span className="truncate">{cand.college}</span>
                   </p>
                 )}
 
-                {/* Verified Skills */}
-                <div>
-                  <span className="text-[11px] font-semibold text-slate-400 block mb-1">
-                    Verified Competencies:
+                <div className="space-y-1.5 mb-4">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Verified Competencies
                   </span>
                   <div className="flex flex-wrap gap-1.5">
                     {cand.verifiedSkills.map((sk: any, sIdx: number) => (
-                      <span
-                        key={sIdx}
-                        className="px-2 py-0.5 rounded text-[10px] bg-slate-950 text-slate-200 border border-slate-800 flex items-center gap-1"
-                      >
-                        <ShieldCheck className="w-3 h-3 text-cyan-400" />
-                        <span>
-                          {sk.name} ({sk.score}%)
-                        </span>
-                      </span>
+                      <Badge key={sIdx} variant="evidence" size="sm">
+                        {sk.name} ({sk.score}%)
+                      </Badge>
                     ))}
                   </div>
                 </div>
               </div>
 
-              {/* Action */}
-              <div className="pt-3 border-t border-slate-800 flex justify-end">
-                <Link
-                  to={`/p/${cand.customSlug || cand.shareToken}`}
+              <div className="pt-3 border-t border-slate-800/60 light:border-slate-100 flex items-center justify-end">
+                <a
+                  href={`/p/${cand.passportSlug}`}
                   target="_blank"
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-400 hover:text-cyan-300"
+                  rel="noreferrer"
                 >
-                  <span>Inspect Passport</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </Link>
+                  <Button variant="primary" size="sm">
+                    <span>Inspect Proof Passport</span>
+                    <ExternalLink className="w-3.5 h-3.5 ml-1" />
+                  </Button>
+                </a>
               </div>
-            </div>
-          ))
-        ) : (
-          <div className="col-span-full text-center py-12 bg-slate-900 border border-slate-800 rounded-2xl space-y-3">
-            <Users className="w-10 h-10 text-slate-600 mx-auto" />
-            <h4 className="text-sm font-bold text-white">No Consented Candidates Found</h4>
-            <p className="text-xs text-slate-400 max-w-sm mx-auto">
-              {skillFilter
-                ? `No public profiles match the skill "${skillFilter}". Try another keyword.`
-                : "Students will appear here when they enable public Proof Passport sharing."}
-            </p>
-          </div>
-        )}
-      </div>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
